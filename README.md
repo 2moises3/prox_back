@@ -2,30 +2,41 @@
 
 API REST para el sistema de recomendación turística personalizada **PROXVEL**.
 
-Este backend consume las salidas CSV generadas por las fases metodológicas de la tesis y las expone mediante endpoints REST para que el frontend Flutter pueda consumirlas. Incluye un catálogo turístico oficial complementario (MINCETUR).
+Este backend consume las salidas CSV generadas por las fases metodológicas de la tesis (modelos de NLP, ranking y afinidad) y las expone mediante endpoints REST para que el frontend Flutter las consuma. Integra una arquitectura de base de datos transaccional con un sistema de fallback automático, asegurando alta disponibilidad.
 
-## Estado Actual: Backend Fase 1B ✅
+---
 
-- ✅ Arquitectura FastAPI por capas
-- ✅ Lectura de CSV reales de tesis (4 archivos)
-- ✅ Catálogo turístico oficial complementario (Fase 1B)
-- ✅ 10 endpoints REST funcionales
-- ✅ Swagger/OpenAPI en `/docs`
-- ✅ Enriquecimiento de destinos y recomendaciones con datos MINCETUR
-- ❌ PostgreSQL (fase futura)
-- ❌ JWT/Auth (fase futura)
-- ❌ Conexión con Flutter (fase futura)
-- ❌ Visitas / feedback (fase futura)
+## 🚀 Estado Actual: Backend Fase 2F ✅ (Cierre Técnico Completado)
 
-## Tecnologías
+El backend se encuentra totalmente implementado y listo para integración con el cliente móvil, contando con las siguientes características:
 
-- **Python 3.11+**
+- ✅ Arquitectura **FastAPI** por capas (MVC extendido)
+- ✅ Persistencia en **PostgreSQL** + **SQLAlchemy** (ORM) + **Alembic** (Migraciones)
+- ✅ Resiliencia con **Fallback automático a CSV** (Sin error 500 ante caídas de DB)
+- ✅ Catálogo turístico oficial complementario integrado (Fase 1B)
+- ✅ Captura de **Feedback de Usuarios** (Reseñas con procesamiento NLP ABSA)
+- ✅ Módulo **MLOps simulado** (Exportación de lotes mensuales para reentrenamiento)
+- ✅ Suite de Pruebas Automatizadas (**pytest**) 100% Passed
+- ✅ Interfaz **Swagger/OpenAPI** interactiva en `/docs`
+- ❌ **JWT/Auth real** (fase futura opcional)
+- ❌ **Integración total con Flutter** (fase inminente)
+
+---
+
+## 🛠 Tecnologías
+
+- **Python 3.12+**
 - **FastAPI** — Framework web asíncrono
-- **Pydantic** — Validación y serialización
-- **Pandas** — Lectura de CSV
+- **PostgreSQL** — Motor de Base de Datos principal
+- **SQLAlchemy & Alembic** — ORM y control de versiones de BD
+- **Pydantic v2** — Validación y serialización
+- **Pandas** — Lectura y manipulación de CSV
 - **Uvicorn** — Servidor ASGI
+- **Pytest** — Pruebas unitarias y de integración
 
-## Instalación
+---
+
+## ⚙️ Instalación y Despliegue Local
 
 ### 1. Crear entorno virtual
 
@@ -49,17 +60,23 @@ Copiar `.env.example` a `.env` y ajustar si es necesario:
 Copy-Item .env.example .env
 ```
 
-### 4. Verificar CSV
+Asegúrate de configurar `DATABASE_URL` apuntando a una instancia válida de PostgreSQL.
 
-Los archivos CSV deben estar en `app/data/`:
+### 4. Base de Datos y Datos Semilla
 
-| Archivo | Origen | Descripción |
-|---------|--------|-------------|
-| `matriz_absa_normalizada.csv` | Fase 2 (tesis) | Puntajes ABSA por aspecto y destino |
-| `clima_scores.csv` | Fase 4 (tesis) | Scores climáticos por mes y destino |
-| `aforo_scores.csv` | Fase 4 (tesis) | Scores de aforo/concurrencia |
-| `ranking_contextual_final.csv` | Fase 4 (tesis) | Ranking contextual final con explicación |
-| `destinations_catalog.csv` | Fase 1B (complementario) | Catálogo turístico oficial MINCETUR |
+1. **Levantar PostgreSQL:** Puedes usar Docker si prefieres:
+   ```bash
+   docker run -d --name proxvel_postgres -e POSTGRES_USER=usuario -e POSTGRES_PASSWORD=password -e POSTGRES_DB=proxvel_db -p 5432:5432 postgres:16
+   ```
+2. **Aplicar migraciones:**
+   ```bash
+   alembic upgrade head
+   ```
+3. **Poblar datos (Seed):** (Opcional, carga los CSV en la base de datos)
+   ```bash
+   python -m app.scripts.seed_database
+   python -m app.scripts.seed_demo_users_reviews
+   ```
 
 ### 5. Ejecutar el backend
 
@@ -67,80 +84,109 @@ Los archivos CSV deben estar en `app/data/`:
 python run.py
 ```
 
-El servidor arranca en `http://localhost:8000`.
+El servidor arrancará en `http://localhost:8000`.
 
-## Swagger UI
+---
+
+## 📚 Documentación Interactiva (Swagger UI)
 
 - **Swagger**: [http://localhost:8000/docs](http://localhost:8000/docs)
 - **ReDoc**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
 
-## Endpoints Disponibles
+---
 
-### Endpoints base (Fase 1)
+## 🔌 Endpoints Principales
 
+### Sistema y Salud
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET | `/api/v1/health` | Estado del servicio |
-| GET | `/api/v1/data/status` | Estado de carga de CSV |
-| GET | `/api/v1/destinations` | Listar destinos (enriquecido) |
-| GET | `/api/v1/destinations/{id}` | Detalle de un destino (enriquecido) |
-| GET | `/api/v1/recommendations/contextual` | Ranking contextual (enriquecido) |
-| GET | `/api/v1/recommendations/search` | Búsqueda por texto (enriquecido) |
-| GET | `/api/v1/recommendations/base` | Stub de Fase 3 |
+| GET | `/api/v1/health` | Estado de salud general de la API |
+| GET | `/api/v1/data/status` | Modo operativo (`database` vs `csv_fallback`) y métricas |
 
-### Endpoints de catálogo turístico (Fase 1B)
-
+### Turismo y Catálogo
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET | `/api/v1/tourism/catalog` | Catálogo turístico oficial completo |
-| GET | `/api/v1/tourism/catalog/{id}` | Detalle turístico de un destino |
-| GET | `/api/v1/tourism/map-markers` | Marcadores de mapa (coordenadas válidas) |
+| GET | `/api/v1/destinations` | Listado de destinos metodológicos con scores (ABSA) |
+| GET | `/api/v1/destinations/{id}` | Detalle profundo de destino, clima y aforo |
+| GET | `/api/v1/tourism/catalog` | Fichas turísticas oficiales (MINCETUR) |
 
-> **Nota:** El catálogo turístico es información complementaria de fuentes oficiales (MINCETUR).
-> **No afecta** los scores de recomendación, el ranking, ni la compatibilidad calculados por la tesis.
+### Recomendaciones Inteligentes
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/v1/recommendations/contextual` | Ranking final personalizado (`user_id`) |
+| GET | `/api/v1/recommendations/search` | Búsqueda por texto enriquecida |
 
-### Parámetros de Query
+### Usuarios y Reseñas (Feedback Loop)
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| POST | `/api/v1/reviews` | Registrar reseñas y ratings por aspectos (1-5) |
+| GET | `/api/v1/users/demo` | Listar usuarios demo del sistema |
 
-**`/destinations`**: `city`, `limit`
+### MLOps Admin (Exportación Mensual)
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| POST | `/api/v1/admin/training-batches/monthly` | Agrupa reseñas pendientes en lotes y exporta a CSV para reentrenamiento |
+| GET | `/api/v1/admin/training-batches` | Historial de lotes procesados |
 
-**`/recommendations/contextual`**: `user_id`, `city`, `limit`
+*(Los parámetros query como `?user_id=U00001` y `?limit=10` están documentados en `/docs`).*
 
-**`/recommendations/search`**: `query`, `city`, `limit`
+---
 
-## Arquitectura
+## 🏗 Arquitectura del Sistema
+
+La arquitectura está diseñada para alta tolerancia a fallos, utilizando un patrón dual donde toda petición a Base de Datos cuenta con un rescate silencioso hacia un caché CSV.
 
 ```
-Routes → Schemas → Services → Repositories → CSV Data
+Routes ↔ Schemas ↔ Services ↔ Repositories ↔ [ PostgreSQL (Primary) ]
+                                             ↘ [ CSV Cache (Fallback) ]
 ```
 
-```
+### Estructura del Código
+
+```text
 proxvel_backend/
 ├── app/
-│   ├── main.py              # App FastAPI + lifespan
-│   ├── config/              # Settings, CORS
-│   ├── routes/              # Endpoints HTTP (+ tourism_routes.py)
-│   ├── schemas/             # Modelos Pydantic (+ tourism_schema.py)
-│   ├── services/            # Lógica de negocio (+ tourism_service.py)
-│   ├── repositories/        # Acceso a datos CSV (+ tourism_repository.py)
-│   ├── data/                # CSV de tesis + catálogo turístico
-│   └── utils/               # Response builder, normalizers
-├── tests/                   # Tests con pytest (14 tests)
-├── docs/                    # Reportes de fase
-├── requirements.txt
-├── .env / .env.example
-└── run.py                   # Entry point
+│   ├── main.py              # Entry point FastAPI + Configuración CORS + Lifespan
+│   ├── config/              # Gestión de variables .env y conexión de Base de datos
+│   ├── routes/              # Controladores de tráfico HTTP
+│   ├── services/            # Lógica central del negocio y reglas operativas
+│   ├── repositories/        # Conexión DB First / DB Fallback a memoria CSV
+│   ├── schemas/             # Pydantic (Validación de entradas y salidas)
+│   ├── models/              # Modelos SQLAlchemy para la BD Relacional
+│   ├── data/                # CSV Semilla de Minería de Datos (Inmutables)
+│   ├── exports/             # Output de MLOps simulado
+│   ├── scripts/             # Utilitarios (Seeders, Checks, Resets)
+│   └── utils/               # Wrappers y Normalizadores estándar
+├── tests/                   # Pruebas automatizadas (pytest)
+├── alembic/                 # Migraciones de esquema
+├── docs/                    # Documentación y reportes de fases
+└── run.py                   # Lanzador oficial Uvicorn
 ```
 
-## Tests
+---
 
+## 🧪 Pruebas Automatizadas
+
+La suite actual garantiza el correcto funcionamiento del modelo de fallbacks y validaciones 404/422.
 ```powershell
 pytest -v
 ```
 
-## Fases Futuras
+---
 
-- **Fase 2**: PostgreSQL + SQLAlchemy + Alembic
-- **Fase 3**: JWT / Autenticación
-- **Fase 4**: Integración con Flutter
-- **Fase 5**: Docker + despliegue
-- **Fase futura**: Visitas, feedback, mapa real
+## 📂 Archivos y Carpetas Ignoradas (.gitignore)
+Se asegura que los siguientes elementos **NO** sean subidos al repositorio:
+- `venv/` y `.venv/` (Entornos virtuales)
+- `__pycache__/` y compilados `*.pyc`
+- `.env` (Credenciales y configuraciones locales)
+- **`cocoasas` / `cocoasas/`** (Archivos temporales o privados especificados por directiva)
+- `.pytest_cache/` y `.coverage`
+
+---
+
+## 🔮 Fases Futuras
+
+- **Fase 3**: Integración completa con cliente móvil **Flutter**.
+- **Fase 4**: Autenticación segura (**JWT / OAuth2**) y Control de Accesos (RBAC).
+- **Fase 5**: Integración de pasarela de MLOps real y actualización de pesos del modelo.
+- **Fase 6**: Contenerización total (Docker Compose multi-node) y CI/CD.
