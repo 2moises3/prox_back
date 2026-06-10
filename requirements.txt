@@ -6,3 +6,6 @@ pandas
 python-dotenv
 httpx
 pytest
+sqlalchemy
+psycopg2-binary
+alembic
