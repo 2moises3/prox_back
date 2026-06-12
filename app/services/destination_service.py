@@ -16,6 +16,10 @@ def get_destinations(
     return destination_repository.get_all_destinations(city=city, limit=limit)
 
 
-def get_destination_detail(destination_id: str) -> dict[str, Any] | None:
-    """Obtiene el detalle completo de un destino por su ID."""
-    return destination_repository.get_destination_by_id(destination_id)
+def get_destination_detail(
+    destination_id: str,
+    month: int | None = None,
+) -> dict[str, Any] | None:
+    """Obtiene el detalle completo de un destino por su ID.
+    month (1-12) selecciona el mes del contexto clima/aforo."""
+    return destination_repository.get_destination_by_id(destination_id, month=month)

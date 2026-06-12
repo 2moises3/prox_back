@@ -3,31 +3,35 @@ PROXVEL Backend - CSV Loader.
 Carga genérica de archivos CSV a listas de diccionarios.
 Los datos se cargan una sola vez al startup y se cachean en memoria.
 
-Columnas reales detectadas en los CSV de tesis:
+Columnas reales detectadas en los CSV de tesis (Fase4_V2):
 
 matriz_absa_normalizada.csv:
   destination, accesibilidad, aforo_multitudes, alojamiento,
   atencion_servicio, atractivos, clima, costos, gastronomia,
   limpieza, seguridad
 
-clima_scores.csv:
-  destination, station_selected, station, month, month_name,
-  tmax, tmin, pp, temp_prom, clima_categoria, score_clima
+clima_scores.csv (V2):
+  destination, station, month, month_name, pp, tmax, tmin,
+  temp_prom, score_temperatura, score_precipitacion,
+  score_clima_base, nivel_clima, riesgo_climatico,
+  score_clima_modelo, nivel_clima_modelo
 
-aforo_scores.csv:
-  destination, year, month, visitantes_mes, registros_mes,
-  aforo_normalizado, nivel_aforo, score_aforo_base, ...
-  (22 columnas totales)
+aforo_scores.csv (V2):
+  destination, year, month, month_name, visitantes_mes,
+  registros_fuente, fecha, max_visitantes_destino,
+  aforo_normalizado, score_aforo_base, nivel_aforo,
+  visitantes_pred_3m, aforo_pred_normalizado, score_aforo_predicho,
+  nivel_aforo_predicho, aforo_modelo_normalizado,
+  score_aforo_modelo, nivel_aforo_modelo
 
-ranking_contextual_final.csv:
-  user_id, destination, rank, score_fase3, score_wsm,
-  score_cosine_referencia, modelo_usado, compatibilidad,
-  etiqueta_triclase, clima_preferido, tolerancia_multitudes,
-  month_x, temp_prom, pp, clima_categoria, score_clima,
-  year, month_y, visitantes_mes, aforo_normalizado,
-  nivel_aforo, score_aforo_base, score_aforo,
-  score_final_fase4, rank_fase4, compatibilidad_final,
-  etiqueta_final, explicacion_final
+ranking_contextual_final.csv (ranking_contextual_app.csv V2):
+  user_id, nueva_posicion, posicion_fase3, cambio_posicion,
+  interpretacion_cambio, destination, compatibilidad_contextual_pct,
+  score_final_fase4, score_fase3, score_clima_modelo,
+  nivel_clima_modelo, preferencia_climatica, afinidad_climatica_usuario,
+  score_aforo_modelo, nivel_aforo_modelo, M_metacontexto,
+  B_contextual, P_contextual, razon_contextual_principal,
+  explicacion_final, es_recomendado
 
 destinations_catalog.csv (Fase 1B - catálogo complementario):
   destination_id, destination, official_name, department, province,

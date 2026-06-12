@@ -1,37 +1,37 @@
-﻿destination,station_selected,station,month,month_name,tmax,tmin,pp,temp_prom,clima_categoria,score_clima
-Circuito Mágico del Agua,CAMPO DE MARTE,CAMPO DE MARTE,1,Enero,25.6,20.4,0.6,23.0,Favorable,1.0
-Circuito Mágico del Agua,CAMPO DE MARTE,CAMPO DE MARTE,2,Febrero,27.1,21.1,0.5,24.1,Moderado,0.5
-Circuito Mágico del Agua,CAMPO DE MARTE,CAMPO DE MARTE,3,Marzo,26.7,20.6,0.4,23.65,Favorable,1.0
-Circuito Mágico del Agua,CAMPO DE MARTE,CAMPO DE MARTE,4,Abril,24.6,18.8,0.1,21.700000000000003,Favorable,1.0
-Circuito Mágico del Agua,CAMPO DE MARTE,CAMPO DE MARTE,5,Mayo,21.4,17.0,0.4,19.2,Favorable,1.0
-Circuito Mágico del Agua,CAMPO DE MARTE,CAMPO DE MARTE,6,Junio,18.9,16.0,1.3,17.45,Favorable,1.0
-Circuito Mágico del Agua,CAMPO DE MARTE,CAMPO DE MARTE,7,Julio,18.0,15.4,2.1,16.7,Favorable,1.0
-Circuito Mágico del Agua,CAMPO DE MARTE,CAMPO DE MARTE,8,Agosto,17.5,14.6,1.9,16.05,Favorable,1.0
-Circuito Mágico del Agua,CAMPO DE MARTE,CAMPO DE MARTE,9,Septiembre,18.1,14.7,1.2,16.4,Favorable,1.0
-Circuito Mágico del Agua,CAMPO DE MARTE,CAMPO DE MARTE,10,Octubre,19.4,15.4,0.5,17.4,Favorable,1.0
-Circuito Mágico del Agua,CAMPO DE MARTE,CAMPO DE MARTE,11,Noviembre,21.2,16.7,0.5,18.95,Favorable,1.0
-Circuito Mágico del Agua,CAMPO DE MARTE,CAMPO DE MARTE,12,Diciembre,23.1,18.4,0.3,20.75,Favorable,1.0
-Lago Titicaca,PUNO,PUNO,1,Enero,16.0,5.9,158.7,10.95,Moderado,0.5
-Lago Titicaca,PUNO,PUNO,2,Febrero,15.7,5.9,144.9,10.8,Moderado,0.5
-Lago Titicaca,PUNO,PUNO,3,Marzo,15.6,5.5,116.3,10.55,Moderado,0.5
-Lago Titicaca,PUNO,PUNO,4,Abril,15.7,4.0,50.8,9.85,Moderado,0.5
-Lago Titicaca,PUNO,PUNO,5,Mayo,15.5,1.2,7.2,8.35,Moderado,0.5
-Lago Titicaca,PUNO,PUNO,6,Junio,14.8,-0.5,3.0,7.15,Desfavorable,0.0
-Lago Titicaca,PUNO,PUNO,7,Julio,14.9,-0.8,3.4,7.05,Desfavorable,0.0
-Lago Titicaca,PUNO,PUNO,8,Agosto,15.7,0.4,9.6,8.049999999999999,Moderado,0.5
-Lago Titicaca,PUNO,PUNO,9,Septiembre,16.6,2.3,23.5,9.450000000000001,Moderado,0.5
-Lago Titicaca,PUNO,PUNO,10,Octubre,17.2,3.8,44.1,10.5,Moderado,0.5
-Lago Titicaca,PUNO,PUNO,11,Noviembre,17.7,4.7,40.0,11.2,Moderado,0.5
-Lago Titicaca,PUNO,PUNO,12,Diciembre,17.2,5.6,87.6,11.399999999999999,Moderado,0.5
-Machu Picchu,MACHU PICCHU,MACHU PICCHU,1,Enero,20.6,11.8,340.7,16.200000000000003,Desfavorable,0.0
-Machu Picchu,MACHU PICCHU,MACHU PICCHU,2,Febrero,20.6,11.9,324.5,16.25,Desfavorable,0.0
-Machu Picchu,MACHU PICCHU,MACHU PICCHU,3,Marzo,21.0,11.9,340.6,16.45,Desfavorable,0.0
-Machu Picchu,MACHU PICCHU,MACHU PICCHU,4,Abril,21.5,11.7,184.1,16.6,Desfavorable,0.0
-Machu Picchu,MACHU PICCHU,MACHU PICCHU,5,Mayo,21.9,10.8,73.4,16.35,Favorable,1.0
-Machu Picchu,MACHU PICCHU,MACHU PICCHU,6,Junio,22.0,10.0,50.8,16.0,Favorable,1.0
-Machu Picchu,MACHU PICCHU,MACHU PICCHU,7,Julio,22.1,9.4,54.2,15.75,Favorable,1.0
-Machu Picchu,MACHU PICCHU,MACHU PICCHU,8,Agosto,23.1,10.0,60.6,16.55,Favorable,1.0
-Machu Picchu,MACHU PICCHU,MACHU PICCHU,9,Septiembre,23.4,11.1,76.2,17.25,Favorable,1.0
-Machu Picchu,MACHU PICCHU,MACHU PICCHU,10,Octubre,22.8,11.5,163.0,17.15,Moderado,0.5
-Machu Picchu,MACHU PICCHU,MACHU PICCHU,11,Noviembre,22.8,12.0,172.5,17.4,Moderado,0.5
-Machu Picchu,MACHU PICCHU,MACHU PICCHU,12,Diciembre,21.2,12.0,275.4,16.6,Desfavorable,0.0
+﻿destination,station,month,month_name,pp,tmax,tmin,temp_prom,score_temperatura,score_precipitacion,score_clima_base,nivel_clima,riesgo_climatico,score_clima_modelo,nivel_clima_modelo
+Circuito Mágico del Agua,CAMPO DE MARTE,1,Enero,0.6,25.6,20.4,23.0,1.0,1.0,1.0,Favorable,Riesgo bajo,1.0,Favorable
+Circuito Mágico del Agua,CAMPO DE MARTE,2,Febrero,0.5,27.1,21.1,24.1,0.9899999999999999,1.0,0.9939999999999999,Favorable,Riesgo bajo,0.9939999999999999,Favorable
+Circuito Mágico del Agua,CAMPO DE MARTE,3,Marzo,0.4,26.7,20.6,23.65,1.0,1.0,1.0,Favorable,Riesgo bajo,1.0,Favorable
+Circuito Mágico del Agua,CAMPO DE MARTE,4,Abril,0.1,24.6,18.8,21.700000000000003,1.0,1.0,1.0,Favorable,Riesgo bajo,1.0,Favorable
+Circuito Mágico del Agua,CAMPO DE MARTE,5,Mayo,0.4,21.4,17.0,19.2,1.0,1.0,1.0,Favorable,Riesgo bajo,1.0,Favorable
+Circuito Mágico del Agua,CAMPO DE MARTE,6,Junio,1.3,18.9,16.0,17.45,1.0,1.0,1.0,Favorable,Riesgo bajo,1.0,Favorable
+Circuito Mágico del Agua,CAMPO DE MARTE,7,Julio,2.1,18.0,15.4,16.7,1.0,1.0,1.0,Favorable,Riesgo bajo,1.0,Favorable
+Circuito Mágico del Agua,CAMPO DE MARTE,8,Agosto,1.9,17.5,14.6,16.05,1.0,1.0,1.0,Favorable,Riesgo bajo,1.0,Favorable
+Circuito Mágico del Agua,CAMPO DE MARTE,9,Septiembre,1.2,18.1,14.7,16.4,1.0,1.0,1.0,Favorable,Riesgo bajo,1.0,Favorable
+Circuito Mágico del Agua,CAMPO DE MARTE,10,Octubre,0.5,19.4,15.4,17.4,1.0,1.0,1.0,Favorable,Riesgo bajo,1.0,Favorable
+Circuito Mágico del Agua,CAMPO DE MARTE,11,Noviembre,0.5,21.2,16.7,18.95,1.0,1.0,1.0,Favorable,Riesgo bajo,1.0,Favorable
+Circuito Mágico del Agua,CAMPO DE MARTE,12,Diciembre,0.3,23.1,18.4,20.75,1.0,1.0,1.0,Favorable,Riesgo bajo,1.0,Favorable
+Lago Titicaca,PUNO,1,Enero,158.7,16.0,5.9,10.95,0.8949999999999999,0.5245500000000001,0.7468199999999999,Moderado,Riesgo: lluvia moderada,0.7468199999999999,Moderado
+Lago Titicaca,PUNO,2,Febrero,144.9,15.7,5.9,10.8,0.8800000000000001,0.5728500000000001,0.75714,Favorable,Riesgo: lluvia moderada,0.75714,Favorable
+Lago Titicaca,PUNO,3,Marzo,116.3,15.6,5.5,10.55,0.855,0.67295,0.7821800000000001,Favorable,Riesgo: lluvia moderada,0.7821800000000001,Favorable
+Lago Titicaca,PUNO,4,Abril,50.8,15.7,4.0,9.85,0.7849999999999999,0.9168000000000001,0.83772,Favorable,Riesgo bajo,0.83772,Favorable
+Lago Titicaca,PUNO,5,Mayo,7.2,15.5,1.2,8.35,0.6349999999999999,1.0,0.7809999999999999,Favorable,Riesgo bajo,0.7809999999999999,Favorable
+Lago Titicaca,PUNO,6,Junio,3.0,14.8,-0.5,7.15,0.48666666666666675,1.0,0.6920000000000001,Moderado,Riesgo: frío,0.6920000000000001,Moderado
+Lago Titicaca,PUNO,7,Julio,3.4,14.9,-0.8,7.05,0.47333333333333333,1.0,0.6839999999999999,Moderado,Riesgo: frío,0.6839999999999999,Moderado
+Lago Titicaca,PUNO,8,Agosto,9.6,15.7,0.4,8.049999999999999,0.6049999999999999,1.0,0.7629999999999999,Favorable,Riesgo bajo,0.7629999999999999,Favorable
+Lago Titicaca,PUNO,9,Septiembre,23.5,16.6,2.3,9.450000000000001,0.7450000000000001,1.0,0.8470000000000001,Favorable,Riesgo bajo,0.8470000000000001,Favorable
+Lago Titicaca,PUNO,10,Octubre,44.1,17.2,3.8,10.5,0.85,0.9436,0.88744,Favorable,Riesgo bajo,0.88744,Favorable
+Lago Titicaca,PUNO,11,Noviembre,40.0,17.7,4.7,11.2,0.9199999999999999,0.96,0.9359999999999999,Favorable,Riesgo bajo,0.9359999999999999,Favorable
+Lago Titicaca,PUNO,12,Diciembre,87.6,17.2,5.6,11.399999999999999,0.9399999999999998,0.7734000000000001,0.8733599999999999,Favorable,Riesgo: lluvia moderada,0.8733599999999999,Favorable
+Machu Picchu,MACHU PICCHU,1,Enero,340.7,20.6,11.8,16.200000000000003,1.0,0.2,0.6799999999999999,Moderado,Riesgo: lluvia alta,0.6799999999999999,Moderado
+Machu Picchu,MACHU PICCHU,2,Febrero,324.5,20.6,11.9,16.25,1.0,0.2,0.6799999999999999,Moderado,Riesgo: lluvia alta,0.6799999999999999,Moderado
+Machu Picchu,MACHU PICCHU,3,Marzo,340.6,21.0,11.9,16.45,1.0,0.2,0.6799999999999999,Moderado,Riesgo: lluvia alta,0.6799999999999999,Moderado
+Machu Picchu,MACHU PICCHU,4,Abril,184.1,21.5,11.7,16.6,1.0,0.44145833333333334,0.7765833333333333,Favorable,Riesgo: lluvia alta,0.7765833333333333,Favorable
+Machu Picchu,MACHU PICCHU,5,Mayo,73.4,21.9,10.8,16.35,1.0,0.8264,0.93056,Favorable,Riesgo bajo,0.93056,Favorable
+Machu Picchu,MACHU PICCHU,6,Junio,50.8,22.0,10.0,16.0,1.0,0.9168000000000001,0.96672,Favorable,Riesgo bajo,0.96672,Favorable
+Machu Picchu,MACHU PICCHU,7,Julio,54.2,22.1,9.4,15.75,1.0,0.9032,0.96128,Favorable,Riesgo bajo,0.96128,Favorable
+Machu Picchu,MACHU PICCHU,8,Agosto,60.6,23.1,10.0,16.55,1.0,0.8775999999999999,0.95104,Favorable,Riesgo bajo,0.95104,Favorable
+Machu Picchu,MACHU PICCHU,9,Septiembre,76.2,23.4,11.1,17.25,1.0,0.8151999999999999,0.92608,Favorable,Riesgo bajo,0.92608,Favorable
+Machu Picchu,MACHU PICCHU,10,Octubre,163.0,22.8,11.5,17.15,1.0,0.5095000000000001,0.8038000000000001,Favorable,Riesgo: lluvia moderada,0.8038000000000001,Favorable
+Machu Picchu,MACHU PICCHU,11,Noviembre,172.5,22.8,12.0,17.4,1.0,0.47625000000000006,0.7905,Favorable,Riesgo: lluvia moderada,0.7905,Favorable
+Machu Picchu,MACHU PICCHU,12,Diciembre,275.4,21.2,12.0,16.6,1.0,0.2512500000000001,0.7005,Moderado,Riesgo: lluvia alta,0.7005,Moderado

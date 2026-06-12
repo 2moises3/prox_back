@@ -38,12 +38,19 @@ def list_destinations(
     summary="Detalle de destino",
     description=(
         "Devuelve el detalle completo de un destino, incluyendo "
-        "puntajes ABSA por aspecto y contexto climático/aforo."
+        "puntajes ABSA por aspecto y contexto climático/aforo. "
+        "El parámetro month (1-12) selecciona el mes del contexto; "
+        "sin él se usa el último disponible."
     ),
 )
-def get_destination(destination_id: str):
+def get_destination(
+    destination_id: str,
+    month: int | None = Query(
+        None, ge=1, le=12, description="Mes (1-12) para clima/aforo"
+    ),
+):
     """Obtiene detalle de un destino por su ID (slug)."""
-    detail = destination_service.get_destination_detail(destination_id)
+    detail = destination_service.get_destination_detail(destination_id, month=month)
 
     if detail is None:
         raise HTTPException(
