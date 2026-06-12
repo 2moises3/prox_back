@@ -2,11 +2,12 @@
 PROXVEL Backend - Ranking Repository.
 Acceso a datos de ranking contextual final desde CSV.
 
-Fuente: ranking_contextual_final.csv
-Columnas clave: user_id, destination, rank, score_fase3,
-  compatibilidad, etiqueta_triclase, score_clima, score_aforo,
-  score_final_fase4, rank_fase4, compatibilidad_final,
-  etiqueta_final, explicacion_final
+Fuente: ranking_contextual_final.csv (ranking_contextual_app.csv Fase4_V2)
+Columnas clave: user_id, destination, nueva_posicion, posicion_fase3,
+  compatibilidad_contextual_pct, score_final_fase4, score_fase3,
+  score_clima_modelo, nivel_clima_modelo, score_aforo_modelo,
+  nivel_aforo_modelo, razon_contextual_principal,
+  etiqueta_final, explicacion_final, es_recomendado
 
 Enriquecimiento (Fase 1B): datos complementarios del catálogo
 turístico (city, region, category, cover_image_url, tourism_summary)
@@ -53,8 +54,8 @@ def get_contextual_ranking(
             if r.get("user_id") == first_user
         ] if first_user else []
 
-    # Ordenar por rank_fase4
-    filtered.sort(key=lambda x: safe_int(x.get("rank_fase4"), 9999))
+    # Ordenar por nueva_posicion (Fase4_V2)
+    filtered.sort(key=lambda x: safe_int(x.get("nueva_posicion"), 9999))
 
     # Transformar a formato de respuesta
     results = []
@@ -98,11 +99,11 @@ def search_recommendations(
         if dest_id not in seen_destinations:
             seen_destinations[dest_id] = row
         else:
-            # Conservar el que tenga mejor compatibilidad_final
+            # Conservar el que tenga mejor compatibilidad_contextual_pct
             current_score = safe_float(
-                seen_destinations[dest_id].get("compatibilidad_final"), 0
+                seen_destinations[dest_id].get("compatibilidad_contextual_pct"), 0
             )
-            new_score = safe_float(row.get("compatibilidad_final"), 0)
+            new_score = safe_float(row.get("compatibilidad_contextual_pct"), 0)
             if new_score > current_score:
                 seen_destinations[dest_id] = row
 
@@ -116,9 +117,9 @@ def search_recommendations(
             if query_lower in (r.get("destination", "") or "").lower()
         ]
 
-    # Ordenar por compatibilidad_final descendente
+    # Ordenar por compatibilidad_contextual_pct descendente
     unique_rows.sort(
-        key=lambda x: safe_float(x.get("compatibilidad_final"), 0),
+        key=lambda x: safe_float(x.get("compatibilidad_contextual_pct"), 0),
         reverse=True,
     )
 
@@ -135,7 +136,7 @@ def search_recommendations(
             "category": enrichment.get("category") if enrichment else None,
             "cover_image_url": enrichment.get("cover_image_url") if enrichment else None,
             "compatibility_percentage": safe_float(
-                row.get("compatibilidad_final")
+                row.get("compatibilidad_contextual_pct")
             ),
             "final_score": safe_float(row.get("score_final_fase4")),
         }
@@ -154,7 +155,7 @@ def search_recommendations(
 def _build_recommendation_item(row: dict[str, Any]) -> dict[str, Any]:
     """Transforma una fila de ranking CSV al formato RecommendationItem."""
     return {
-        "rank": safe_int(row.get("rank_fase4")),
+        "rank": safe_int(row.get("nueva_posicion")),
         "destination_id": generate_destination_id(
             row.get("destination", "")
         ),
@@ -164,17 +165,18 @@ def _build_recommendation_item(row: dict[str, Any]) -> dict[str, Any]:
         "category": None,
         "cover_image_url": None,
         "compatibility_percentage": safe_float(
-            row.get("compatibilidad_final")
+            row.get("compatibilidad_contextual_pct")
         ),
         "label": row.get("etiqueta_final"),
         "final_score": safe_float(row.get("score_final_fase4")),
         "short_explanation": row.get("explicacion_final"),
         "aspect_scores": None,  # Se enriquece desde ABSA en el service
         "context": {
-            "weather_score": safe_float(row.get("score_clima")),
-            "crowd_score": safe_float(row.get("score_aforo")),
-            "weather_category": row.get("clima_categoria"),
-            "crowd_level": row.get("nivel_aforo"),
+            "weather_score": safe_float(row.get("score_clima_modelo")),
+            "crowd_score": safe_float(row.get("score_aforo_modelo")),
+            "weather_category": row.get("nivel_clima_modelo"),
+            "crowd_level": row.get("nivel_aforo_modelo"),
+            "context_reason": row.get("razon_contextual_principal"),
         },
         "tourism_summary": None,
     }

@@ -18,6 +18,12 @@ from app.models.crowd_score_model import CrowdScore
 
 logger = logging.getLogger(__name__)
 
+_MONTH_NAMES = {
+    1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
+    5: "Mayo", 6: "Junio", 7: "Julio", 8: "Agosto",
+    9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre",
+}
+
 
 def get_all_destinations(city: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
     try:
@@ -67,13 +73,13 @@ def get_all_destinations(city: str | None = None, limit: int = 50) -> list[dict[
         return fallback_repo.get_all_destinations(city=city, limit=limit)
 
 
-def get_destination_by_id(destination_id: str) -> dict[str, Any] | None:
+def get_destination_by_id(destination_id: str, month: int | None = None) -> dict[str, Any] | None:
     try:
         db = SessionLocal()
         try:
             if db.query(Destination).count() == 0:
                 logger.info("PostgreSQL: Tabla destinations vacía. Fallback a CSV.")
-                return fallback_repo.get_destination_by_id(destination_id)
+                return fallback_repo.get_destination_by_id(destination_id, month=month)
 
             logger.info(f"PostgreSQL: Leyendo detalle para destination_id={destination_id}.")
             dest = db.scalar(select(Destination).where(Destination.destination_id == destination_id))
@@ -99,24 +105,32 @@ def get_destination_by_id(destination_id: str) -> dict[str, Any] | None:
                 # Initialize with Nones matching JSON contract
                 aspect_scores = {k: None for k in ["accesibilidad", "aforo_multitudes", "alojamiento", "atencion_servicio", "atractivos", "clima", "costos", "gastronomia", "limpieza", "seguridad"]}
 
-            # Get latest climate
-            clima = db.scalar(select(ClimateScore).where(ClimateScore.destination_id == destination_id).order_by(ClimateScore.id.desc()))
+            # Climate: por mes solicitado o el último disponible
+            clima_q = select(ClimateScore).where(ClimateScore.destination_id == destination_id)
+            if month is not None:
+                clima_q = clima_q.where(ClimateScore.month == month)
+            clima = db.scalar(clima_q.order_by(ClimateScore.id.desc()))
             weather_detail = {}
             if clima:
-                # The model does not store month_name right now, but for contract consistency we can try to derive or just leave None
                 weather_detail = {
-                    "month_name": None,  # Mapeable en el futuro si se añade al modelo
+                    "month": clima.month,
+                    "month_name": _MONTH_NAMES.get(clima.month),
                     "temp_prom": clima.temp_prom,
                     "pp": clima.pp,
                     "clima_categoria": clima.clima_categoria,
                     "score_clima": clima.score_clima,
                 }
 
-            # Get latest crowd
-            aforo = db.scalar(select(CrowdScore).where(CrowdScore.destination_id == destination_id).order_by(CrowdScore.id.desc()))
+            # Crowd: por mes solicitado (último año con ese mes) o el último disponible
+            aforo_q = select(CrowdScore).where(CrowdScore.destination_id == destination_id)
+            if month is not None:
+                aforo_q = aforo_q.where(CrowdScore.month == month)
+            aforo = db.scalar(aforo_q.order_by(CrowdScore.year.desc(), CrowdScore.id.desc()))
             crowd_detail = {}
             if aforo:
                 crowd_detail = {
+                    "month": aforo.month,
+                    "month_name": _MONTH_NAMES.get(aforo.month),
                     "periodo": aforo.periodo,
                     "visitantes_mes": aforo.visitantes_mes,
                     "aforo_normalizado": aforo.aforo_normalizado,

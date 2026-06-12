@@ -148,7 +148,7 @@ def run_seeder():
             ))
         db.commit()
 
-        # 6. Insertar Climate Scores
+        # 6. Insertar Climate Scores (Fase4_V2: score_clima→score_clima_modelo, clima_categoria→nivel_clima)
         logger.info("Procesando climate_scores...")
         for row in data_clima:
             dest_id = generate_destination_id(row.get("destination", ""))
@@ -157,12 +157,12 @@ def run_seeder():
                 month=safe_int(row.get("month"), default=1),
                 temp_prom=safe_float(row.get("temp_prom")),
                 pp=safe_float(row.get("pp")),
-                clima_categoria=row.get("clima_categoria"),
-                score_clima=safe_float(row.get("score_clima")),
+                clima_categoria=row.get("nivel_clima"),
+                score_clima=safe_float(row.get("score_clima_modelo")),
             ))
         db.commit()
 
-        # 7. Insertar Crowd Scores
+        # 7. Insertar Crowd Scores (Fase4_V2: periodo columna eliminada)
         logger.info("Procesando crowd_scores...")
         for row in data_aforo:
             dest_id = generate_destination_id(row.get("destination", ""))
@@ -174,11 +174,11 @@ def run_seeder():
                 aforo_normalizado=safe_float(row.get("aforo_normalizado")),
                 nivel_aforo=row.get("nivel_aforo"),
                 score_aforo_base=safe_float(row.get("score_aforo_base")),
-                periodo=row.get("periodo"),
+                periodo=None,
             ))
         db.commit()
 
-        # 8. Insertar Contextual Rankings
+        # 8. Insertar Contextual Rankings (Fase4_V2: rank→nueva_posicion, compatibilidad_final→compatibilidad_contextual_pct)
         logger.info("Procesando contextual_rankings...")
         # Batch insert for performance as there are 9000 rows
         rankings = []
@@ -187,9 +187,9 @@ def run_seeder():
             rankings.append(ContextualRanking(
                 user_id=row.get("user_id"),
                 destination_id=dest_id,
-                rank=safe_int(row.get("rank")),
+                rank=safe_int(row.get("nueva_posicion")),
                 score_final_fase4=safe_float(row.get("score_final_fase4")),
-                compatibilidad_final=safe_float(row.get("compatibilidad_final")),
+                compatibilidad_final=safe_float(row.get("compatibilidad_contextual_pct")),
                 etiqueta_final=row.get("etiqueta_final"),
                 explicacion_final=row.get("explicacion_final"),
             ))

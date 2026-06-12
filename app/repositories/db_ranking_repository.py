@@ -4,6 +4,7 @@ Acceso a datos de ranking contextual desde PostgreSQL con fallback a CSV.
 """
 
 import logging
+from datetime import datetime
 from typing import Any
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select
@@ -13,8 +14,30 @@ from app.repositories import ranking_repository as fallback_repo
 from app.repositories import db_tourism_repository
 from app.models.contextual_ranking_model import ContextualRanking
 from app.models.destination_model import Destination
+from app.models.climate_score_model import ClimateScore
+from app.models.crowd_score_model import CrowdScore
 
 logger = logging.getLogger(__name__)
+
+
+def _get_month_context(db: Session, destination_id: str, month: int) -> dict[str, Any]:
+    """Contexto clima/aforo del mes indicado para enriquecer el ranking."""
+    clima = db.scalar(
+        select(ClimateScore)
+        .where(ClimateScore.destination_id == destination_id, ClimateScore.month == month)
+        .order_by(ClimateScore.id.desc())
+    )
+    aforo = db.scalar(
+        select(CrowdScore)
+        .where(CrowdScore.destination_id == destination_id, CrowdScore.month == month)
+        .order_by(CrowdScore.year.desc(), CrowdScore.id.desc())
+    )
+    return {
+        "weather_score": clima.score_clima if clima else None,
+        "crowd_score": aforo.score_aforo_base if aforo else None,
+        "weather_category": clima.clima_categoria if clima else None,
+        "crowd_level": aforo.nivel_aforo if aforo else None,
+    }
 
 
 def get_contextual_ranking(user_id: str | None = None, city: str | None = None, limit: int = 10) -> list[dict[str, Any]]:
@@ -44,6 +67,7 @@ def get_contextual_ranking(user_id: str | None = None, city: str | None = None, 
             )
             rankings_db = db.scalars(query).all()
 
+            current_month = datetime.now().month
             results = []
             for r in rankings_db:
                 dest_name = r.destination_rel.destination if r.destination_rel else None
@@ -60,12 +84,8 @@ def get_contextual_ranking(user_id: str | None = None, city: str | None = None, 
                     "final_score": r.score_final_fase4,
                     "short_explanation": r.explicacion_final,
                     "aspect_scores": None,
-                    "context": {
-                        "weather_score": None, # Los scores de contexto no están en ContextualRanking per se
-                        "crowd_score": None,   # Pero el CSV original los traía pre-joinados
-                        "weather_category": None,
-                        "crowd_level": None,
-                    },
+                    # Contexto clima/aforo del mes actual desde sus tablas
+                    "context": _get_month_context(db, r.destination_id, current_month),
                     "tourism_summary": None,
                 }
                 

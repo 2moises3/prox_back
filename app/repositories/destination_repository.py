@@ -95,12 +95,12 @@ def get_all_destinations(
     return destinations[:limit]
 
 
-def get_destination_by_id(destination_id: str) -> dict[str, Any] | None:
+def get_destination_by_id(destination_id: str, month: int | None = None) -> dict[str, Any] | None:
     """
     Devuelve el detalle completo de un destino, incluyendo:
     - scores ABSA por aspecto
-    - contexto climático (último/promedio disponible)
-    - contexto de aforo (último disponible)
+    - contexto climático (mes solicitado o último disponible)
+    - contexto de aforo (mes solicitado o último disponible)
     - tourism_info desde catálogo turístico (Fase 1B)
     """
     absa_data = get_data("absa")
@@ -126,10 +126,10 @@ def get_destination_by_id(destination_id: str) -> dict[str, Any] | None:
         aspect_scores[col] = safe_float(target_row.get(col))
 
     # Obtener contexto climático
-    weather_context = _get_weather_context(dest_name)
+    weather_context = _get_weather_context(dest_name, month=month)
 
     # Obtener contexto de aforo
-    crowd_context = _get_crowd_context(dest_name)
+    crowd_context = _get_crowd_context(dest_name, month=month)
 
     # Obtener enriquecimiento del catálogo (Fase 1B)
     enrichment = tourism_repository.get_enrichment_data(destination_id)
@@ -165,51 +165,60 @@ def get_destination_by_id(destination_id: str) -> dict[str, Any] | None:
     }
 
 
-def _get_weather_context(destination_name: str) -> dict[str, Any]:
-    """Obtiene el contexto climático más reciente para un destino."""
+def _get_weather_context(destination_name: str, month: int | None = None) -> dict[str, Any]:
+    """Contexto climático para un destino (columnas Fase4_V2).
+    Si se indica month (1-12) filtra ese mes; si no, el último disponible."""
     clima_data = get_data("clima")
     if clima_data is None:
         return {}
 
-    # Filtrar por destino y tomar el último registro disponible
     dest_rows = [
         r for r in clima_data
         if r.get("destination") == destination_name
     ]
+    if month is not None:
+        month_rows = [r for r in dest_rows if r.get("month") == month]
+        if month_rows:
+            dest_rows = month_rows
 
     if not dest_rows:
         return {}
 
-    # Tomar el último mes disponible
     last = dest_rows[-1]
     return {
+        "month": last.get("month"),
         "month_name": last.get("month_name"),
         "temp_prom": safe_float(last.get("temp_prom")),
         "pp": safe_float(last.get("pp")),
-        "clima_categoria": last.get("clima_categoria"),
-        "score_clima": safe_float(last.get("score_clima")),
+        "clima_categoria": last.get("nivel_clima"),
+        "score_clima": safe_float(last.get("score_clima_modelo")),
     }
 
 
-def _get_crowd_context(destination_name: str) -> dict[str, Any]:
-    """Obtiene el contexto de aforo más reciente para un destino."""
+def _get_crowd_context(destination_name: str, month: int | None = None) -> dict[str, Any]:
+    """Contexto de aforo para un destino (columnas Fase4_V2).
+    Si se indica month (1-12) filtra ese mes (último año); si no, el último disponible."""
     aforo_data = get_data("aforo")
     if aforo_data is None:
         return {}
 
-    # Filtrar por destino
     dest_rows = [
         r for r in aforo_data
         if r.get("destination") == destination_name
     ]
+    if month is not None:
+        month_rows = [r for r in dest_rows if r.get("month") == month]
+        if month_rows:
+            dest_rows = month_rows
 
     if not dest_rows:
         return {}
 
-    # Tomar el último período disponible
     last = dest_rows[-1]
     return {
-        "periodo": last.get("periodo"),
+        "month": last.get("month"),
+        "month_name": last.get("month_name"),
+        "periodo": None,
         "visitantes_mes": safe_float(last.get("visitantes_mes")),
         "aforo_normalizado": safe_float(last.get("aforo_normalizado")),
         "nivel_aforo": last.get("nivel_aforo"),
