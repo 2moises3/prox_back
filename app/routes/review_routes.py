@@ -1,17 +1,22 @@
 """
 PROXVEL Backend - Review Routes.
 """
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List
 
 from app.services import review_service
 from app.schemas.review_schema import ReviewCreate, ReviewResponse
 from app.utils.response_builder import success_response
+from app.core.security import get_current_user
+from app.schemas.user_schema import UserResponse
 
 router = APIRouter(prefix="/reviews", tags=["Reviews"])
 
 @router.post("", response_model=dict, status_code=status.HTTP_201_CREATED, summary="Crear nueva reseña")
-def create_review(review: ReviewCreate):
+def create_review(review: ReviewCreate, current_user: UserResponse = Depends(get_current_user)):
+    # Sobrescribimos o forzamos el user_id para evitar suplantación
+    review.user_id = current_user.user_id
+    
     created_review, error = review_service.create_review(review)
     if error:
         if "no existe" in error:
@@ -30,7 +35,10 @@ def get_reviews_by_destination(destination_id: str):
     return success_response(data=[r.model_dump() for r in reviews], message="Reseñas de destino obtenidas")
 
 @router.get("/user/{user_id}", response_model=dict, summary="Obtener reseñas por usuario")
-def get_reviews_by_user(user_id: str):
+def get_reviews_by_user(user_id: str, current_user: UserResponse = Depends(get_current_user)):
+    if current_user.user_id != user_id:
+        raise HTTPException(status_code=403, detail="No tienes permiso para ver las reseñas de este usuario")
+        
     reviews = review_service.get_reviews_by_user(user_id)
     return success_response(data=[r.model_dump() for r in reviews], message="Reseñas de usuario obtenidas")
 

@@ -9,3 +9,5 @@ pytest
 sqlalchemy
 psycopg2-binary
 alembic
+python-jose[cryptography]
+email-validator

@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     # URL de conexión a la base de datos PostgreSQL
     DATABASE_URL: str | None = None
 
+    # JWT Config
+    SECRET_KEY: str = "proxvel_super_secret_key_for_jwt_auth_local_only"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 43200 # 30 dias para pruebas locales
+
     @property
     def data_path(self) -> Path:
         """Devuelve la ruta absoluta al directorio de datos CSV."""

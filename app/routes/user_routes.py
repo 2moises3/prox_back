@@ -1,12 +1,13 @@
 """
 PROXVEL Backend - User Routes.
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 
 from app.services import user_service
 from app.schemas.user_schema import UserResponse, UserCreate, UserUpdate
 from app.utils.response_builder import success_response
+from app.core.security import get_current_user
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -23,14 +24,20 @@ def get_demo_users():
     return success_response(data=[u.model_dump() for u in users], message="Usuarios demo obtenidos")
 
 @router.get("/{user_id}", response_model=dict, summary="Obtener usuario por ID")
-def get_user_by_id(user_id: str):
+def get_user_by_id(user_id: str, current_user: UserResponse = Depends(get_current_user)):
+    if current_user.user_id != user_id:
+        raise HTTPException(status_code=403, detail="No tienes permiso para acceder a este usuario")
+        
     user = user_service.get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return success_response(data=user.model_dump(), message="Usuario obtenido")
 
 @router.patch("/{user_id}", response_model=dict, summary="Actualizar usuario")
-def update_user(user_id: str, user_update: UserUpdate):
+def update_user(user_id: str, user_update: UserUpdate, current_user: UserResponse = Depends(get_current_user)):
+    if current_user.user_id != user_id:
+        raise HTTPException(status_code=403, detail="No tienes permiso para modificar a este usuario")
+        
     updated_user, error = user_service.update_user(user_id, user_update)
     if error:
         if "no encontrado" in error:
@@ -42,14 +49,20 @@ from app.services import traveler_profile_service
 from app.schemas.traveler_profile_schema import TravelerProfileUpdate
 
 @router.get("/{user_id}/traveler-profile", response_model=dict, summary="Obtener perfil viajero")
-def get_traveler_profile(user_id: str):
+def get_traveler_profile(user_id: str, current_user: UserResponse = Depends(get_current_user)):
+    if current_user.user_id != user_id:
+        raise HTTPException(status_code=403, detail="No tienes permiso para acceder a este perfil")
+        
     profile, error = traveler_profile_service.get_profile_by_user_id(user_id)
     if error:
         raise HTTPException(status_code=404, detail=error)
     return success_response(data=profile.model_dump(), message="Perfil viajero obtenido")
 
 @router.put("/{user_id}/traveler-profile", response_model=dict, summary="Crear o reemplazar perfil viajero")
-def put_traveler_profile(user_id: str, profile_update: TravelerProfileUpdate):
+def put_traveler_profile(user_id: str, profile_update: TravelerProfileUpdate, current_user: UserResponse = Depends(get_current_user)):
+    if current_user.user_id != user_id:
+        raise HTTPException(status_code=403, detail="No tienes permiso para modificar este perfil")
+        
     profile, error = traveler_profile_service.update_profile(user_id, profile_update, is_partial=False)
     if error:
         if "no encontrado" in error:
@@ -58,7 +71,10 @@ def put_traveler_profile(user_id: str, profile_update: TravelerProfileUpdate):
     return success_response(data=profile.model_dump(), message="Perfil viajero guardado correctamente")
 
 @router.patch("/{user_id}/traveler-profile", response_model=dict, summary="Actualizar parcialmente perfil viajero")
-def patch_traveler_profile(user_id: str, profile_update: TravelerProfileUpdate):
+def patch_traveler_profile(user_id: str, profile_update: TravelerProfileUpdate, current_user: UserResponse = Depends(get_current_user)):
+    if current_user.user_id != user_id:
+        raise HTTPException(status_code=403, detail="No tienes permiso para modificar este perfil")
+        
     profile, error = traveler_profile_service.update_profile(user_id, profile_update, is_partial=True)
     if error:
         if "no encontrado" in error or "no existe" in error:
