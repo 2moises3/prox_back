@@ -3,7 +3,7 @@ PROXVEL Backend - Traveler Profile Model.
 Preferencias estáticas del viajero.
 """
 
-from sqlalchemy import ForeignKey, String, Float
+from sqlalchemy import ForeignKey, String, Float, Integer, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -16,7 +16,10 @@ class TravelerProfile(Base, TimestampMixin):
     user_id: Mapped[str] = mapped_column(ForeignKey("users.user_id"), index=True)
     
     presupuesto: Mapped[str | None] = mapped_column(String)
+    dias_viaje: Mapped[int | None] = mapped_column(Integer)
     clima_preferido: Mapped[str | None] = mapped_column(String)
+    tipo_interes: Mapped[str | None] = mapped_column(String)
+    intereses: Mapped[list[str] | None] = mapped_column(JSON)
     tolerancia_multitudes: Mapped[str | None] = mapped_column(String)
     
     # Pesos ABSA

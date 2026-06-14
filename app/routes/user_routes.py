@@ -5,10 +5,17 @@ from fastapi import APIRouter, HTTPException
 from typing import List
 
 from app.services import user_service
-from app.schemas.user_schema import UserResponse
+from app.schemas.user_schema import UserResponse, UserCreate, UserUpdate
 from app.utils.response_builder import success_response
 
 router = APIRouter(prefix="/users", tags=["Users"])
+
+@router.post("", response_model=dict, summary="Crear nuevo usuario", status_code=201)
+def create_user(user: UserCreate):
+    created_user, error = user_service.create_user(user)
+    if error:
+        raise HTTPException(status_code=409, detail=error)
+    return success_response(data=created_user.model_dump(), message="Usuario creado correctamente")
 
 @router.get("/demo", response_model=dict, summary="Obtener usuarios demo")
 def get_demo_users():
@@ -21,3 +28,40 @@ def get_user_by_id(user_id: str):
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return success_response(data=user.model_dump(), message="Usuario obtenido")
+
+@router.patch("/{user_id}", response_model=dict, summary="Actualizar usuario")
+def update_user(user_id: str, user_update: UserUpdate):
+    updated_user, error = user_service.update_user(user_id, user_update)
+    if error:
+        if "no encontrado" in error:
+            raise HTTPException(status_code=404, detail=error)
+        raise HTTPException(status_code=409, detail=error)
+    return success_response(data=updated_user.model_dump(), message="Usuario actualizado")
+
+from app.services import traveler_profile_service
+from app.schemas.traveler_profile_schema import TravelerProfileUpdate
+
+@router.get("/{user_id}/traveler-profile", response_model=dict, summary="Obtener perfil viajero")
+def get_traveler_profile(user_id: str):
+    profile, error = traveler_profile_service.get_profile_by_user_id(user_id)
+    if error:
+        raise HTTPException(status_code=404, detail=error)
+    return success_response(data=profile.model_dump(), message="Perfil viajero obtenido")
+
+@router.put("/{user_id}/traveler-profile", response_model=dict, summary="Crear o reemplazar perfil viajero")
+def put_traveler_profile(user_id: str, profile_update: TravelerProfileUpdate):
+    profile, error = traveler_profile_service.update_profile(user_id, profile_update, is_partial=False)
+    if error:
+        if "no encontrado" in error:
+            raise HTTPException(status_code=404, detail=error)
+        raise HTTPException(status_code=400, detail=error)
+    return success_response(data=profile.model_dump(), message="Perfil viajero guardado correctamente")
+
+@router.patch("/{user_id}/traveler-profile", response_model=dict, summary="Actualizar parcialmente perfil viajero")
+def patch_traveler_profile(user_id: str, profile_update: TravelerProfileUpdate):
+    profile, error = traveler_profile_service.update_profile(user_id, profile_update, is_partial=True)
+    if error:
+        if "no encontrado" in error or "no existe" in error:
+            raise HTTPException(status_code=404, detail=error)
+        raise HTTPException(status_code=400, detail=error)
+    return success_response(data=profile.model_dump(), message="Perfil viajero actualizado correctamente")

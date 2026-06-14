@@ -38,6 +38,72 @@ def run_seeder():
         db.commit()
         logger.info("Usuarios demo creados.")
 
+        from app.models.traveler_profile_model import TravelerProfile
+
+        # 2. Crear perfiles viajeros demo
+        profiles_data = [
+            {
+                "user_id": "U00001",
+                "presupuesto": "medio",
+                "clima_preferido": "templado",
+                "tolerancia_multitudes": "moderado",
+                "peso_accesibilidad": 3.0,
+                "peso_aforo_multitudes": 3.0,
+                "peso_alojamiento": 3.0,
+                "peso_atencion_servicio": 4.0,
+                "peso_atractivos": 5.0,
+                "peso_clima": 4.0,
+                "peso_costos": 3.0,
+                "peso_gastronomia": 4.0,
+                "peso_limpieza": 4.0,
+                "peso_seguridad": 4.0
+            },
+            {
+                "user_id": "U00002",
+                "presupuesto": "bajo",
+                "clima_preferido": "templado",
+                "tolerancia_multitudes": "bajo",
+                "peso_accesibilidad": 4.0,
+                "peso_aforo_multitudes": 5.0,
+                "peso_alojamiento": 3.0,
+                "peso_atencion_servicio": 3.0,
+                "peso_atractivos": 4.0,
+                "peso_clima": 3.0,
+                "peso_costos": 5.0,
+                "peso_gastronomia": 3.0,
+                "peso_limpieza": 4.0,
+                "peso_seguridad": 5.0
+            },
+            {
+                "user_id": "U00003",
+                "presupuesto": "alto",
+                "clima_preferido": "frio",
+                "tolerancia_multitudes": "moderado",
+                "peso_accesibilidad": 3.0,
+                "peso_aforo_multitudes": 4.0,
+                "peso_alojamiento": 5.0,
+                "peso_atencion_servicio": 5.0,
+                "peso_atractivos": 5.0,
+                "peso_clima": 5.0,
+                "peso_costos": 2.0,
+                "peso_gastronomia": 4.0,
+                "peso_limpieza": 5.0,
+                "peso_seguridad": 5.0
+            }
+        ]
+
+        for p_data in profiles_data:
+            existing_profile = db.query(TravelerProfile).filter(TravelerProfile.user_id == p_data["user_id"]).first()
+            if not existing_profile:
+                new_profile = TravelerProfile(**p_data)
+                db.add(new_profile)
+            else:
+                for key, value in p_data.items():
+                    setattr(existing_profile, key, value)
+
+        db.commit()
+        logger.info("Perfiles viajeros demo creados/actualizados.")
+
         # 2. Crear reseñas demo
         reviews_data = [
             {
