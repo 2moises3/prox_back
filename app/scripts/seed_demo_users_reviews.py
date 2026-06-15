@@ -31,7 +31,7 @@ def run_seeder():
                     name=u_data["name"],
                     email=u_data["email"],
                     password_hash="demo_not_for_auth",
-                    role="user",
+                    role="traveler",
                     is_active=True
                 )
                 db.add(new_user)

@@ -17,7 +17,7 @@ class User(Base, TimestampMixin):
     name: Mapped[str | None] = mapped_column(String)
     email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String, nullable=False)
-    role: Mapped[str] = mapped_column(String, default="user")
+    role: Mapped[str] = mapped_column(String, default="traveler")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Relaciones

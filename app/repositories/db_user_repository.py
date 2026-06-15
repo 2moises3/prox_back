@@ -15,7 +15,7 @@ def get_demo_users() -> List[User]:
     try:
         db = SessionLocal()
         try:
-            return list(db.scalars(select(User).where(User.role == "user")).all())
+            return list(db.scalars(select(User).where(User.role == "traveler")).all())
         finally:
             db.close()
     except Exception as e:
@@ -68,7 +68,7 @@ def create_user(user_id: str, name: Optional[str], email: str, password_hash: st
                 name=name,
                 email=email,
                 password_hash=password_hash,
-                role="user",
+                role="traveler",
                 is_active=True
             )
             db.add(new_user)

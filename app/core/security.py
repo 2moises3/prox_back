@@ -57,11 +57,33 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserResponse:
         
     return user
 
+async def require_authenticated_user(current_user: UserResponse = Depends(get_current_user)) -> UserResponse:
+    """Valida simplemente que el usuario esté autenticado."""
+    return current_user
+
+async def require_traveler_user(current_user: UserResponse = Depends(get_current_user)) -> UserResponse:
+    """Valida que el usuario tenga rol de traveler."""
+    if current_user.role != "traveler":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Requiere rol de viajero."
+        )
+    return current_user
+
 async def require_admin_or_super_admin(current_user: UserResponse = Depends(get_current_user)) -> UserResponse:
     """Valida que el usuario tenga rol de administrador o super administrador."""
     if current_user.role not in ["admin", "super_admin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permisos administrativos."
+        )
+    return current_user
+
+async def require_super_admin(current_user: UserResponse = Depends(get_current_user)) -> UserResponse:
+    """Valida que el usuario tenga rol de super administrador."""
+    if current_user.role != "super_admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Requiere privilegios de super administrador."
         )
     return current_user

@@ -35,6 +35,11 @@ def get_my_recommendations(
     # 1. Extraer perfil de viaje
     profile, error = traveler_profile_service.get_profile_by_user_id(current_user.user_id)
     if error or not profile:
+        if current_user.role in ["admin", "super_admin"]:
+            raise HTTPException(
+                status_code=403,
+                detail="Endpoint disponible solo para usuarios viajeros."
+            )
         raise HTTPException(
             status_code=400,
             detail="El usuario no cuenta con un perfil de viaje. Completa el Onboarding primero."
