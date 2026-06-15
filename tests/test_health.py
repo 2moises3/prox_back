@@ -130,8 +130,8 @@ def test_tourism_map_markers_returns_200(client):
     data = response.json()
     assert data["success"] is True
     assert isinstance(data["data"], list)
-    # Las coordenadas están PENDIENTE, así que debe estar vacío
-    assert data["count"] == 0
+    # Las coordenadas ya no están PENDIENTE, así que debe retornar 3 MVP
+    assert data["count"] == 3
 
 
 def test_destinations_enriched_with_catalog(client):
