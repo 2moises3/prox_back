@@ -43,3 +43,40 @@ class SearchResult(BaseModel):
     cover_image_url: str | None = None
     compatibility_percentage: float | None = None
     final_score: float | None = None
+
+
+class RecommendationEngineInfo(BaseModel):
+    source: str
+    version: str
+    is_final_model: bool
+    metrics_status: str
+
+class RecommendationAspectContribution(BaseModel):
+    aspect: str
+    user_weight: float
+    destination_score: float
+    contribution: float
+
+class RecommendationExplanation(BaseModel):
+    summary: str
+    top_aspects: list[RecommendationAspectContribution]
+
+class RecommendationMeItem(BaseModel):
+    destination_id: str
+    name: str
+    city: str | None = None
+    region: str | None = None
+    category: str | None = None
+    cover_image_url: str | None = None
+    rating: float | None = None
+    compatibility_score: float
+    compatibility_percent: int
+    context_status: str | None = None
+    ranking_position: int
+    explanation: RecommendationExplanation
+
+class RecommendationMeResponse(BaseModel):
+    success: bool = True
+    message: str
+    engine: RecommendationEngineInfo
+    data: list[RecommendationMeItem]

@@ -22,6 +22,7 @@ from app.routes import (
     review_routes,
     admin_training_routes,
     auth_routes,
+    favorite_routes,
 )
 
 # Configurar logging
@@ -84,6 +85,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_routes.router, prefix=api_prefix)
     app.include_router(review_routes.router, prefix=api_prefix)
     app.include_router(admin_training_routes.router, prefix=api_prefix)
+    app.include_router(favorite_routes.router, prefix=api_prefix)
 
     return app
 
