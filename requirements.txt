@@ -11,3 +11,7 @@ psycopg2-binary
 alembic
 python-jose[cryptography]
 email-validator
+
+# Cloudinary integration for multimedia
+cloudinary==1.41.0
+python-multipart==0.0.9

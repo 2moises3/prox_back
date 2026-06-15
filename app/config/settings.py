@@ -32,6 +32,13 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 43200 # 30 dias para pruebas locales
 
+    # Cloudinary Config
+    CLOUDINARY_CLOUD_NAME: str | None = None
+    CLOUDINARY_API_KEY: str | None = None
+    CLOUDINARY_API_SECRET: str | None = None
+    CLOUDINARY_FOLDER: str = "proxvel/destinations"
+    MAX_UPLOAD_SIZE_MB: int = 5
+
     @property
     def data_path(self) -> Path:
         """Devuelve la ruta absoluta al directorio de datos CSV."""

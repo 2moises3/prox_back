@@ -56,3 +56,12 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserResponse:
         raise credentials_exception
         
     return user
+
+async def require_admin_or_super_admin(current_user: UserResponse = Depends(get_current_user)) -> UserResponse:
+    """Valida que el usuario tenga rol de administrador o super administrador."""
+    if current_user.role not in ["admin", "super_admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permisos administrativos."
+        )
+    return current_user
