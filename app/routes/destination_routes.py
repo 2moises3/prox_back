@@ -3,8 +3,10 @@ PROXVEL Backend - Destination Routes.
 Endpoints para listar y consultar destinos turísticos.
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
+from sqlalchemy.orm import Session
 
+from app.config.database import get_db
 from app.services import destination_service
 from app.utils.response_builder import success_response
 
@@ -24,9 +26,10 @@ def list_destinations(
         None, description="Filtrar por ciudad (parcial, case-insensitive)"
     ),
     limit: int = Query(50, ge=1, le=200, description="Límite de resultados"),
+    db: Session = Depends(get_db)
 ):
     """Lista destinos disponibles con filtros opcionales."""
-    destinations = destination_service.get_destinations(city=city, limit=limit)
+    destinations = destination_service.get_destinations(db=db, city=city, limit=limit)
     return success_response(
         data=destinations,
         message="Destinos obtenidos correctamente",
@@ -48,9 +51,10 @@ def get_destination(
     month: int | None = Query(
         None, ge=1, le=12, description="Mes (1-12) para clima/aforo"
     ),
+    db: Session = Depends(get_db)
 ):
     """Obtiene detalle de un destino por su ID (slug)."""
-    detail = destination_service.get_destination_detail(destination_id, month=month)
+    detail = destination_service.get_destination_detail(db, destination_id, month=month)
 
     if detail is None:
         raise HTTPException(

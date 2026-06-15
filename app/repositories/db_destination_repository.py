@@ -35,6 +35,10 @@ def get_all_destinations(city: str | None = None, limit: int = 50) -> list[dict[
             
             logger.info("PostgreSQL: Leyendo destinations.")
             dests_db = db.scalars(select(Destination)).all()
+            
+            from app.services import destination_media_service
+            active_covers = destination_media_service.get_covers_batch(db)
+
             destinations = []
             
             for dest in dests_db:
@@ -46,7 +50,7 @@ def get_all_destinations(city: str | None = None, limit: int = 50) -> list[dict[
                     "region": None,
                     "type": None,
                     "subtype": None,
-                    "cover_image_url": None,
+                    "cover_image_url": active_covers.get(dest.destination_id),
                     "official_source_name": None,
                 }
                 enrichment = db_tourism_repository.get_enrichment_data(dest.destination_id, db=db)
@@ -57,7 +61,6 @@ def get_all_destinations(city: str | None = None, limit: int = 50) -> list[dict[
                         "region": enrichment.get("region"),
                         "type": enrichment.get("type"),
                         "subtype": enrichment.get("subtype"),
-                        "cover_image_url": enrichment.get("cover_image_url"),
                         "official_source_name": enrichment.get("official_source_name"),
                     })
                 destinations.append(item)
@@ -138,6 +141,10 @@ def get_destination_by_id(destination_id: str, month: int | None = None) -> dict
                     "score_aforo_base": aforo.score_aforo_base,
                 }
 
+            from app.services import destination_media_service
+            media = destination_media_service.get_destination_media(db, destination_id)
+            cover_url = media.cover.url if media.cover else None
+
             enrichment = db_tourism_repository.get_enrichment_data(destination_id, db=db)
             tourism_info = None
             if enrichment:
@@ -145,7 +152,7 @@ def get_destination_by_id(destination_id: str, month: int | None = None) -> dict
                     "official_name": enrichment.get("official_name"),
                     "description": enrichment.get("description"),
                     "experience_type": enrichment.get("experience_type"),
-                    "gallery_images": enrichment.get("gallery_images", []),
+                    "gallery_images": [g.url for g in media.gallery] if media.gallery else [],
                     "official_source_name": enrichment.get("official_source_name"),
                     "official_source_url": enrichment.get("official_source_url"),
                 }
@@ -156,6 +163,10 @@ def get_destination_by_id(destination_id: str, month: int | None = None) -> dict
                 "city": enrichment.get("city") if enrichment else None,
                 "region": enrichment.get("region") if enrichment else None,
                 "category": enrichment.get("category") if enrichment else None,
+                "type": enrichment.get("type") if enrichment else None,
+                "subtype": enrichment.get("subtype") if enrichment else None,
+                "cover_image_url": cover_url,
+                "official_source_name": enrichment.get("official_source_name") if enrichment else None,
                 "aspect_scores": aspect_scores,
                 "context": {
                     "weather_score": weather_detail.get("score_clima"),

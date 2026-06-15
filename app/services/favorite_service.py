@@ -12,6 +12,9 @@ class FavoriteService:
     def get_user_favorites(self, user_id: str) -> List[FavoriteItemResponse]:
         results = db_favorite_repository.get_user_favorites(user_id)
         
+        from app.services import destination_media_service
+        active_covers = destination_media_service.get_covers_batch(db_favorite_repository.db)
+
         response_list = []
         for fav, dest, catalog in results:
             item = FavoriteItemResponse(
@@ -20,7 +23,7 @@ class FavoriteService:
                 city=catalog.city if catalog else None,
                 region=catalog.region if catalog else None,
                 category=catalog.category if catalog else None,
-                cover_image_url=catalog.cover_image_url if catalog else None,
+                cover_image_url=active_covers.get(fav.destination_id),
                 rating=4.5, # Placeholder ya que la tabla original no tiene un rating simple, o se puede omitir
                 is_favorite=True,
                 created_at=fav.created_at

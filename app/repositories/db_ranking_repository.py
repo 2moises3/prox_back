@@ -67,6 +67,9 @@ def get_contextual_ranking(user_id: str | None = None, city: str | None = None, 
             )
             rankings_db = db.scalars(query).all()
 
+            from app.services import destination_media_service
+            active_covers = destination_media_service.get_covers_batch(db)
+
             current_month = datetime.now().month
             results = []
             for r in rankings_db:
@@ -78,7 +81,7 @@ def get_contextual_ranking(user_id: str | None = None, city: str | None = None, 
                     "city": None,
                     "region": None,
                     "category": None,
-                    "cover_image_url": None,
+                    "cover_image_url": active_covers.get(r.destination_id),
                     "compatibility_percentage": r.compatibilidad_final,
                     "label": r.etiqueta_final,
                     "final_score": r.score_final_fase4,
@@ -94,11 +97,10 @@ def get_contextual_ranking(user_id: str | None = None, city: str | None = None, 
                     item["city"] = enrichment.get("city")
                     item["region"] = enrichment.get("region")
                     item["category"] = enrichment.get("category")
-                    item["cover_image_url"] = enrichment.get("cover_image_url")
                     item["tourism_summary"] = {
                         "description": enrichment.get("description"),
                         "experience_type": enrichment.get("experience_type"),
-                        "cover_image_url": enrichment.get("cover_image_url"),
+                        "cover_image_url": active_covers.get(r.destination_id),
                     }
                 
                 results.append(item)
@@ -153,6 +155,9 @@ def search_recommendations(query: str | None = None, city: str | None = None, li
 
             unique_rows.sort(key=lambda x: x.compatibilidad_final or 0, reverse=True)
 
+            from app.services import destination_media_service
+            active_covers = destination_media_service.get_covers_batch(db)
+
             results = []
             for r in unique_rows[:limit]:
                 dest_name = r.destination_rel.destination if r.destination_rel else None
@@ -164,7 +169,7 @@ def search_recommendations(query: str | None = None, city: str | None = None, li
                     "city": enrichment.get("city") if enrichment else None,
                     "region": enrichment.get("region") if enrichment else None,
                     "category": enrichment.get("category") if enrichment else None,
-                    "cover_image_url": enrichment.get("cover_image_url") if enrichment else None,
+                    "cover_image_url": active_covers.get(r.destination_id),
                     "compatibility_percentage": r.compatibilidad_final,
                     "final_score": r.score_final_fase4,
                 }

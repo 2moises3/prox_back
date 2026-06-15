@@ -39,6 +39,7 @@ ASPECT_COLUMNS = [
 
 
 def get_all_destinations(
+    db: Any,
     city: str | None = None,
     limit: int = 50,
 ) -> list[dict[str, Any]]:
@@ -50,6 +51,9 @@ def get_all_destinations(
     if absa_data is None:
         logger.warning("Datos ABSA no disponibles")
         return []
+
+    from app.services import destination_media_service
+    active_covers = destination_media_service.get_covers_batch(db)
 
     destinations = []
     for row in absa_data:
@@ -68,7 +72,7 @@ def get_all_destinations(
             "region": None,
             "type": None,
             "subtype": None,
-            "cover_image_url": None,
+            "cover_image_url": active_covers.get(dest_id),
             "official_source_name": None,
         }
 
@@ -80,7 +84,6 @@ def get_all_destinations(
             dest["category"] = enrichment.get("category")
             dest["type"] = enrichment.get("type")
             dest["subtype"] = enrichment.get("subtype")
-            dest["cover_image_url"] = enrichment.get("cover_image_url")
             dest["official_source_name"] = enrichment.get("official_source_name")
 
         destinations.append(dest)
@@ -95,7 +98,7 @@ def get_all_destinations(
     return destinations[:limit]
 
 
-def get_destination_by_id(destination_id: str, month: int | None = None) -> dict[str, Any] | None:
+def get_destination_by_id(db: Any, destination_id: str, month: int | None = None) -> dict[str, Any] | None:
     """
     Devuelve el detalle completo de un destino, incluyendo:
     - scores ABSA por aspecto
@@ -134,6 +137,10 @@ def get_destination_by_id(destination_id: str, month: int | None = None) -> dict
     # Obtener enriquecimiento del catálogo (Fase 1B)
     enrichment = tourism_repository.get_enrichment_data(destination_id)
 
+    from app.services import destination_media_service
+    media = destination_media_service.get_destination_media(db, destination_id)
+    cover_url = media.cover.url if media.cover else None
+
     # Construir tourism_info
     tourism_info = None
     if enrichment:
@@ -141,7 +148,7 @@ def get_destination_by_id(destination_id: str, month: int | None = None) -> dict
             "official_name": enrichment.get("official_name"),
             "description": enrichment.get("description"),
             "experience_type": enrichment.get("experience_type"),
-            "gallery_images": enrichment.get("gallery_images", []),
+            "gallery_images": [g.url for g in media.gallery] if media.gallery else [],
             "official_source_name": enrichment.get("official_source_name"),
             "official_source_url": enrichment.get("official_source_url"),
         }
@@ -152,6 +159,10 @@ def get_destination_by_id(destination_id: str, month: int | None = None) -> dict
         "city": enrichment.get("city") if enrichment else None,
         "region": enrichment.get("region") if enrichment else None,
         "category": enrichment.get("category") if enrichment else None,
+        "type": enrichment.get("type") if enrichment else None,
+        "subtype": enrichment.get("subtype") if enrichment else None,
+        "cover_image_url": cover_url,
+        "official_source_name": enrichment.get("official_source_name") if enrichment else None,
         "aspect_scores": aspect_scores,
         "context": {
             "weather_score": weather_context.get("score_clima"),

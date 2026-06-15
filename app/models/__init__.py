@@ -6,6 +6,7 @@ Importar todos los modelos para que Base.metadata los registre.
 from app.models.base import Base
 from app.models.destination_model import Destination
 from app.models.tourism_catalog_model import TourismCatalog
+from app.models.destination_media_model import DestinationMedia
 from app.models.aspect_score_model import DestinationAspectScore
 from app.models.climate_score_model import ClimateScore
 from app.models.crowd_score_model import CrowdScore
