@@ -45,5 +45,3 @@ services:
 
 volumes:
   proxvel_postgres_data:
-    external: true
-    name: postgressql_proxvel_postgres_data
