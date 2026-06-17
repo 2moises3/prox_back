@@ -74,3 +74,43 @@ def delete_media(db: Session, media_id: int) -> bool:
     # Soft delete
     updated = destination_media_repository.update_media(db, media_id, {"is_active": False})
     return updated is not None
+
+def get_all_destination_media(db: Session, destination_id: str):
+    """Retorna toda la multimedia incluyendo inactivos. Para uso admin."""
+    from app.schemas.destination_media_schema import DestinationMediaBase, DestinationMediaAdminResponse
+    all_media = destination_media_repository.get_all_media_for_destination(db, destination_id)
+    cover = None
+    inactive_covers = []
+    gallery = []
+    inactive_gallery = []
+    for m in all_media:
+        item = DestinationMediaBase.model_validate(m)
+        if m.media_type == "cover":
+            if m.is_active and cover is None:
+                cover = item
+            elif not m.is_active:
+                inactive_covers.append(item)
+        else:
+            if m.is_active:
+                gallery.append(item)
+            else:
+                inactive_gallery.append(item)
+    return DestinationMediaAdminResponse(
+        cover=cover,
+        inactive_covers=inactive_covers,
+        gallery=gallery,
+        inactive_gallery=inactive_gallery,
+    )
+
+def permanent_delete_media(db: Session, media_id: int) -> bool:
+    """Elimina la imagen de Cloudinary y luego el registro de la BD."""
+    from app.services import cloudinary_service
+    media = destination_media_repository.get_media_by_id(db, media_id)
+    if not media:
+        return False
+    if media.public_id:
+        try:
+            cloudinary_service.delete_image(media.public_id)
+        except Exception:
+            pass  # Si falla Cloudinary igual eliminamos el registro
+    return destination_media_repository.hard_delete_media(db, media_id)

@@ -94,11 +94,18 @@ def update_profile(user_id: str, profile_data: TravelerProfileUpdate, is_partial
     # exclude_unset=True for PATCH, so we only send what was provided
     # For PUT (is_partial=False), exclude_unset=False to get all fields, even if None
     update_dict = profile_data.model_dump(exclude_unset=is_partial)
-    
-    # Derive weights before saving
-    derived_weights = derive_profile_weights(update_dict)
-    update_dict.update(derived_weights)
-    
+
+    # Solo recalcular pesos ABSA cuando el update toca preferencias que los
+    # determinan. Así un PATCH que solo cambia 'apply_ai_globally' (u otro
+    # campo no-derivante) no pisa los pesos existentes con los valores base.
+    driving_fields = {
+        "presupuesto", "clima_preferido", "tolerancia_multitudes",
+        "intereses", "dias_viaje", "tipo_interes",
+    }
+    if any(field in update_dict for field in driving_fields):
+        derived_weights = derive_profile_weights(update_dict)
+        update_dict.update(derived_weights)
+
     profile = db_traveler_profile_repository.create_or_update_profile(user_id, update_dict, is_partial)
     
     if profile:

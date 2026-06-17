@@ -10,6 +10,8 @@ class DestinationMediaBase(BaseModel):
     provider: str
     alt_text: str | None = None
     position: int = 0
+    is_active: bool = True
+    media_type: str = "gallery"
 
     class Config:
         from_attributes = True
@@ -17,3 +19,10 @@ class DestinationMediaBase(BaseModel):
 class DestinationMediaResponse(BaseModel):
     cover: DestinationMediaBase | None = None
     gallery: list[DestinationMediaBase] = []
+
+class DestinationMediaAdminResponse(BaseModel):
+    """Incluye items inactivos, para uso exclusivo en el panel admin."""
+    cover: DestinationMediaBase | None = None
+    inactive_covers: list[DestinationMediaBase] = []
+    gallery: list[DestinationMediaBase] = []
+    inactive_gallery: list[DestinationMediaBase] = []

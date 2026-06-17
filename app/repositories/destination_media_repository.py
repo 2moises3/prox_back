@@ -75,3 +75,18 @@ def update_media(db: Session, media_id: int, updates: dict) -> DestinationMedia 
 
 def get_media_by_id(db: Session, media_id: int) -> DestinationMedia | None:
     return db.query(DestinationMedia).filter(DestinationMedia.id == media_id).first()
+
+def get_all_media_for_destination(db: Session, destination_id: str) -> list[DestinationMedia]:
+    """Retorna toda la multimedia (activa e inactiva) para uso admin."""
+    return db.query(DestinationMedia).filter(
+        DestinationMedia.destination_id == destination_id
+    ).order_by(DestinationMedia.position).all()
+
+def hard_delete_media(db: Session, media_id: int) -> bool:
+    """Elimina físicamente el registro de la BD (Cloudinary se borra aparte)."""
+    media = db.query(DestinationMedia).filter(DestinationMedia.id == media_id).first()
+    if not media:
+        return False
+    db.delete(media)
+    db.commit()
+    return True

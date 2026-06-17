@@ -24,6 +24,13 @@ from app.routes import (
     auth_routes,
     favorite_routes,
     destination_media_routes,
+    admin_metrics_routes,
+    admin_announcement_routes,
+    announcement_public_routes,
+    admin_destination_routes,
+    admin_user_routes,
+    admin_release_routes,
+    release_public_routes,
 )
 
 # Configurar logging
@@ -88,6 +95,13 @@ def create_app() -> FastAPI:
     app.include_router(admin_training_routes.router, prefix=api_prefix)
     app.include_router(favorite_routes.router, prefix=api_prefix)
     app.include_router(destination_media_routes.router, prefix=api_prefix)
+    app.include_router(admin_metrics_routes.router, prefix=api_prefix)
+    app.include_router(admin_announcement_routes.router, prefix=api_prefix)
+    app.include_router(announcement_public_routes.router, prefix=api_prefix)
+    app.include_router(admin_destination_routes.router, prefix=api_prefix)
+    app.include_router(admin_user_routes.router, prefix=api_prefix)
+    app.include_router(admin_release_routes.router, prefix=api_prefix)
+    app.include_router(release_public_routes.router, prefix=api_prefix)
 
     return app
 

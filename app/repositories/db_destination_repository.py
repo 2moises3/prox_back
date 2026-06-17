@@ -25,22 +25,26 @@ _MONTH_NAMES = {
 }
 
 
-def get_all_destinations(city: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
+def get_all_destinations(city: str | None = None, limit: int = 50, include_inactive: bool = False) -> list[dict[str, Any]]:
     try:
         db = SessionLocal()
         try:
             if db.query(Destination).count() == 0:
                 logger.info("PostgreSQL: Tabla destinations vacía. Fallback a CSV.")
                 return fallback_repo.get_all_destinations(city=city, limit=limit)
-            
+
             logger.info("PostgreSQL: Leyendo destinations.")
-            dests_db = db.scalars(select(Destination)).all()
-            
+            stmt = select(Destination)
+            if not include_inactive:
+                # Catálogo público: ocultar destinos inactivos.
+                stmt = stmt.where(Destination.is_active.is_(True))
+            dests_db = db.scalars(stmt).all()
+
             from app.services import destination_media_service
             active_covers = destination_media_service.get_covers_batch(db)
 
             destinations = []
-            
+
             for dest in dests_db:
                 item = {
                     "destination_id": dest.destination_id,
@@ -52,6 +56,7 @@ def get_all_destinations(city: str | None = None, limit: int = 50) -> list[dict[
                     "subtype": None,
                     "cover_image_url": active_covers.get(dest.destination_id),
                     "official_source_name": None,
+                    "is_active": dest.is_active,
                 }
                 enrichment = db_tourism_repository.get_enrichment_data(dest.destination_id, db=db)
                 if enrichment:
@@ -160,6 +165,7 @@ def get_destination_by_id(destination_id: str, month: int | None = None) -> dict
             return {
                 "destination_id": dest.destination_id,
                 "destination": dest.destination,
+                "is_active": dest.is_active,
                 "city": enrichment.get("city") if enrichment else None,
                 "region": enrichment.get("region") if enrichment else None,
                 "category": enrichment.get("category") if enrichment else None,
@@ -183,3 +189,118 @@ def get_destination_by_id(destination_id: str, month: int | None = None) -> dict
     except Exception as e:
         logger.error("PostgreSQL fallback activado en get_destination_by_id: %s", e)
         return fallback_repo.get_destination_by_id(destination_id)
+
+_ABSA_ASPECTS = [
+    "accesibilidad", "aforo_multitudes", "alojamiento", "atencion_servicio",
+    "atractivos", "clima", "costos", "gastronomia", "limpieza", "seguridad",
+]
+
+
+def upsert_aspect_scores(db: Session, destination_id: str, scores: dict[str, float | None]) -> None:
+    """Inserta o actualiza los puntajes ABSA de un destino."""
+    existing = db.scalar(
+        select(DestinationAspectScore).where(DestinationAspectScore.destination_id == destination_id)
+    )
+    if existing:
+        for key, val in scores.items():
+            if hasattr(existing, key):
+                setattr(existing, key, val)
+    else:
+        valid = {k: v for k, v in scores.items() if k in _ABSA_ASPECTS}
+        db.add(DestinationAspectScore(destination_id=destination_id, **valid))
+    db.commit()
+
+
+def create_destination_admin(db: Session, data: dict[str, Any]) -> dict[str, Any]:
+    """Crea un destino nuevo con su entrada de catálogo turístico y puntajes ABSA neutros."""
+    import re
+
+    name: str = data["name"].strip()
+
+    # Generar slug si no viene
+    destination_id: str = data.get("destination_id") or ""
+    if not destination_id:
+        slug = name.lower()
+        for src, dst in [("á","a"),("é","e"),("í","i"),("ó","o"),("ú","u"),("ñ","n"),("ü","u")]:
+            slug = slug.replace(src, dst)
+        slug = re.sub(r"[^a-z0-9\s-]", "", slug)
+        slug = re.sub(r"[\s-]+", "-", slug).strip("-")
+        destination_id = slug
+
+    # Unicidad
+    existing = db.scalar(select(Destination).where(Destination.destination_id == destination_id))
+    if existing:
+        raise ValueError(f"Ya existe un destino con el ID '{destination_id}'")
+
+    dest = Destination(destination_id=destination_id, destination=name)
+    db.add(dest)
+    db.flush()
+
+    from app.models.tourism_catalog_model import TourismCatalog
+    catalog = TourismCatalog(
+        destination_id=destination_id,
+        city=data.get("city"),
+        region=data.get("region"),
+        category=data.get("category"),
+        description=data.get("description"),
+    )
+    db.add(catalog)
+
+    # Puntajes ABSA neutros (0.5) para que el destino aparezca en recomendaciones
+    # desde el primer momento. El admin puede ajustarlos desde el panel de contexto.
+    neutral = {a: 0.5 for a in _ABSA_ASPECTS}
+    db.add(DestinationAspectScore(destination_id=destination_id, **neutral))
+
+    db.commit()
+
+    return {
+        "destination_id": destination_id,
+        "destination": name,
+        "city": data.get("city"),
+        "region": data.get("region"),
+        "category": data.get("category"),
+    }
+
+
+def set_destination_status(db: Session, destination_id: str, is_active: bool) -> dict[str, Any] | None:
+    """Activa o desactiva un destino (soft visibility). Devuelve el detalle actualizado."""
+    dest = db.scalar(select(Destination).where(Destination.destination_id == destination_id))
+    if not dest:
+        return None
+    dest.is_active = is_active
+    db.commit()
+    return get_destination_by_id(destination_id)
+
+
+def update_destination_admin(db: Session, destination_id: str, update_data: dict[str, Any]) -> dict[str, Any] | None:
+    try:
+        from app.models.tourism_catalog_model import TourismCatalog
+        
+        dest = db.scalar(select(Destination).where(Destination.destination_id == destination_id))
+        if not dest:
+            return None
+            
+        tourism = db.scalar(select(TourismCatalog).where(TourismCatalog.destination_id == destination_id))
+        if not tourism:
+            # Create tourism catalog entry if it doesn't exist to allow updating
+            tourism = TourismCatalog(destination_id=destination_id)
+            db.add(tourism)
+            
+        # Update Destination table
+        if "name" in update_data and update_data["name"] is not None:
+            dest.destination = update_data["name"]
+            
+        # Update TourismCatalog table
+        for field in ["city", "region", "category", "description", "official_source_name", "official_source_url"]:
+            if field in update_data and update_data[field] is not None:
+                setattr(tourism, field, update_data[field])
+                
+        db.commit()
+        
+        # Return updated detail
+        return get_destination_by_id(destination_id)
+        
+    except Exception as e:
+        db.rollback()
+        logger.error("Error updating destination %s: %s", destination_id, e)
+        raise e

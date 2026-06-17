@@ -3,7 +3,7 @@ PROXVEL Backend - Destination Model.
 Modelo central de destinos.
 """
 
-from sqlalchemy import String
+from sqlalchemy import String, Boolean, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -15,6 +15,11 @@ class Destination(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     destination_id: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
     destination: Mapped[str] = mapped_column(String, nullable=False)
+
+    # Visibilidad pública. Inactivo = oculto en la app, visible en el dashboard.
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=text("true"), nullable=False
+    )
 
     # Relaciones
     tourism_catalog = relationship("TourismCatalog", back_populates="destination", uselist=False)

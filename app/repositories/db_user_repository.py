@@ -22,6 +22,35 @@ def get_demo_users() -> List[User]:
         logger.error(f"Error fetching users: {e}")
         return []
 
+def get_all_users() -> List[User]:
+    """Lista todos los usuarios (cualquier rol), ordenados por user_id."""
+    try:
+        db = SessionLocal()
+        try:
+            return list(db.scalars(select(User).order_by(User.user_id.asc())).all())
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"Error listing all users: {e}")
+        return []
+
+
+def count_active_super_admins() -> int:
+    """Cuenta super_admins activos (para no permitir quedarse sin ninguno)."""
+    try:
+        db = SessionLocal()
+        try:
+            rows = db.scalars(
+                select(User).where(User.role == "super_admin").where(User.is_active.is_(True))
+            ).all()
+            return len(list(rows))
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"Error counting super admins: {e}")
+        return 0
+
+
 def get_user_by_id(user_id: str) -> Optional[User]:
     try:
         db = SessionLocal()
@@ -99,3 +128,75 @@ def update_user(user_id: str, update_data: dict) -> Optional[User]:
     except Exception as e:
         logger.error(f"Error updating user: {e}")
         return None
+
+
+# ── Extensión 6B: Eliminación segura de usuarios ─────────────────────────────
+
+ANON_USER_ID = "ANON_DELETED"
+
+
+def ensure_anon_sentinel(db: Session) -> None:
+    """Crea el usuario centinela ANON_DELETED si no existe (idempotente)."""
+    existing = db.scalar(select(User).where(User.user_id == ANON_USER_ID))
+    if existing:
+        return
+    sentinel = User(
+        user_id=ANON_USER_ID,
+        name="Viajero eliminado",
+        email="deleted@proxvel.internal",
+        password_hash="no_login",
+        role="traveler",
+        is_active=False,
+    )
+    db.add(sentinel)
+    db.flush()
+    logger.info("Usuario centinela ANON_DELETED creado.")
+
+
+def delete_user_data(db: Session, user_id: str) -> dict:
+    """
+    Elimina datos asociados a un usuario y anonimiza sus reseñas.
+    Recibe una sesión externa para control transaccional.
+    Retorna un dict con los contadores de registros afectados.
+    """
+    from app.models.favorite_model import Favorite
+    from app.models.visit_model import Visit
+    from app.models.traveler_profile_model import TravelerProfile
+    from app.models.contextual_ranking_model import ContextualRanking
+    from app.models.review_model import Review
+
+    counts: dict = {}
+
+    # 1. Favoritos
+    fav_count = db.query(Favorite).filter(Favorite.user_id == user_id).delete(synchronize_session="fetch")
+    counts["favorites_deleted"] = fav_count
+
+    # 2. Visitas
+    visit_count = db.query(Visit).filter(Visit.user_id == user_id).delete(synchronize_session="fetch")
+    counts["visits_deleted"] = visit_count
+
+    # 3. Perfiles de viajero
+    profile_count = db.query(TravelerProfile).filter(TravelerProfile.user_id == user_id).delete(synchronize_session="fetch")
+    counts["profiles_deleted"] = profile_count
+
+    # 4. Rankings contextuales (user_id es String plano, sin FK)
+    ranking_count = db.query(ContextualRanking).filter(ContextualRanking.user_id == user_id).delete(synchronize_session="fetch")
+    counts["rankings_deleted"] = ranking_count
+
+    # 5. Anonimizar reseñas (reasignar al centinela)
+    ensure_anon_sentinel(db)
+    review_count = db.query(Review).filter(Review.user_id == user_id).update(
+        {Review.user_id: ANON_USER_ID}, synchronize_session="fetch"
+    )
+    counts["reviews_anonymized"] = review_count
+
+    db.flush()
+    return counts
+
+
+def delete_user_record(db: Session, user_id: str) -> bool:
+    """Elimina el registro del usuario de la tabla users. Retorna True si se eliminó."""
+    deleted = db.query(User).filter(User.user_id == user_id).delete(synchronize_session="fetch")
+    db.flush()
+    return deleted > 0
+

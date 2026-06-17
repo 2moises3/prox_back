@@ -2,6 +2,7 @@
 PROXVEL Backend - User Schemas.
 """
 
+from datetime import datetime
 from pydantic import BaseModel, Field
 from typing import Optional
 
@@ -21,6 +22,41 @@ class UserResponse(UserBase):
     user_id: str
     role: str
     is_active: bool
+
+    class Config:
+        from_attributes = True
+
+
+# ── Gestión administrativa de usuarios (6B) ──────────────────────────────────
+
+ALLOWED_ROLES = ("traveler", "admin", "super_admin")
+DASHBOARD_CREATABLE_ROLES = ("traveler", "admin")
+
+
+class AdminUserCreate(BaseModel):
+    """Payload para crear usuario desde el dashboard (super_admin only)."""
+    name: str = Field(..., min_length=1)
+    email: str = Field(..., min_length=5)
+    password: str = Field(..., min_length=6)
+    role: str  # Validado contra DASHBOARD_CREATABLE_ROLES en el servicio
+
+
+class AdminRoleUpdate(BaseModel):
+    role: str
+
+
+class AdminStatusUpdate(BaseModel):
+    is_active: bool
+
+
+class AdminUserResponse(BaseModel):
+    """Vista admin de un usuario (incluye created_at). Nunca password_hash."""
+    user_id: str
+    name: Optional[str] = None
+    email: str
+    role: str
+    is_active: bool
+    created_at: datetime
 
     class Config:
         from_attributes = True

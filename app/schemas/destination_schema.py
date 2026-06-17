@@ -64,6 +64,7 @@ class DestinationSummary(BaseModel):
     subtype: str | None = None
     cover_image_url: str | None = None
     official_source_name: str | None = None
+    is_active: bool = True
 
 
 class DestinationDetail(DestinationSummary):
@@ -74,3 +75,56 @@ class DestinationDetail(DestinationSummary):
     weather_detail: WeatherDetail | None = None
     crowd_detail: CrowdDetail | None = None
     tourism_info: dict | None = None  # Fase 1B: info del catálogo turístico
+
+class DestinationAdminUpdate(BaseModel):
+    """Payload para actualización administrativa de un destino."""
+
+    name: str | None = None
+    city: str | None = None
+    region: str | None = None
+    category: str | None = None
+    description: str | None = None
+    official_source_name: str | None = None
+    official_source_url: str | None = None
+
+
+class DestinationAdminCreate(BaseModel):
+    """Payload para crear un nuevo destino desde el panel admin."""
+
+    name: str                          # Nombre visible del destino (requerido)
+    destination_id: str | None = None  # Slug manual; si None, se genera desde name
+    city: str | None = None
+    region: str | None = None
+    category: str | None = None
+    description: str | None = None
+
+
+class DestinationCreateResponse(BaseModel):
+    """Respuesta mínima al crear un destino."""
+
+    destination_id: str
+    destination: str
+    city: str | None = None
+    region: str | None = None
+    category: str | None = None
+
+
+class DestinationStatusUpdate(BaseModel):
+    """Payload para activar/desactivar un destino."""
+
+    is_active: bool
+
+
+class AbsaScoresUpdate(BaseModel):
+    """Payload para actualizar puntajes ABSA (valores 0.0 – 1.0)."""
+
+    accesibilidad: float | None = None
+    aforo_multitudes: float | None = None
+    alojamiento: float | None = None
+    atencion_servicio: float | None = None
+    atractivos: float | None = None
+    clima: float | None = None
+    costos: float | None = None
+    gastronomia: float | None = None
+    limpieza: float | None = None
+    seguridad: float | None = None

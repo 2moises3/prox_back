@@ -1,11 +1,20 @@
-import os
+"""
+⚠️ DEPRECATED — Este script ha sido reemplazado por bootstrap_superadmin.py
+
+Para crear admins/travelers operativos: usar el dashboard como super_admin.
+Para crear el super_admin raíz: usar scripts/bootstrap_superadmin.py
+
+Este archivo se mantiene solo como referencia. No ejecutar.
+"""
+
 import sys
-import argparse
-import getpass
+print("❌ DEPRECATED: Use scripts/bootstrap_superadmin.py en su lugar.")
+print("   Para admins/travelers operativos, use el dashboard.")
+sys.exit(1)
 
-# Asegurar que el path sea correcto para importar desde app
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# ── Código original (deshabilitado) ──────────────────────────────────────────
 
+import os
 from app.config.database import SessionLocal
 from app.models.user_model import User
 from app.utils.hash_util import get_password_hash
@@ -40,26 +49,32 @@ def main():
     db = SessionLocal()
     try:
         existing_user = db.query(User).filter(User.email == email).first()
-        if existing_user:
-            print(f"Error: El email {email} ya está registrado.")
-            sys.exit(1)
-
-        new_user_id = db_user_repository.get_next_user_id()
         hashed_password = get_password_hash(password)
 
-        new_user = User(
-            user_id=new_user_id,
-            name=name,
-            email=email,
-            password_hash=hashed_password,
-            role=role,
-            is_active=True
-        )
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
-        
-        print(f"Éxito: Usuario '{name}' ({email}) creado con rol '{role}'.")
+        if existing_user:
+            # UPSERT: actualizar usuario existente
+            existing_user.name = name
+            existing_user.role = role
+            existing_user.password_hash = hashed_password
+            existing_user.is_active = True
+            db.commit()
+            db.refresh(existing_user)
+            print(f"Éxito: Usuario '{name}' ({email}) actualizado con rol '{role}'.")
+        else:
+            # Crear nuevo usuario
+            new_user_id = db_user_repository.get_next_user_id()
+            new_user = User(
+                user_id=new_user_id,
+                name=name,
+                email=email,
+                password_hash=hashed_password,
+                role=role,
+                is_active=True
+            )
+            db.add(new_user)
+            db.commit()
+            db.refresh(new_user)
+            print(f"Éxito: Usuario '{name}' ({email}) creado con rol '{role}'.")
 
     except Exception as e:
         print(f"Error interno: {e}")

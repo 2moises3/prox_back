@@ -11,7 +11,10 @@ class TravelerProfileBase(BaseModel):
     tipo_interes: Optional[str] = None
     intereses: Optional[List[str]] = Field(default_factory=list)
     tolerancia_multitudes: Optional[str] = None
-    
+
+    # Preferencia global de IA. No apaga la pestaña "Para ti".
+    apply_ai_globally: Optional[bool] = False
+
     peso_accesibilidad: Optional[float] = Field(None, ge=1.0, le=5.0)
     peso_aforo_multitudes: Optional[float] = Field(None, ge=1.0, le=5.0)
     peso_alojamiento: Optional[float] = Field(None, ge=1.0, le=5.0)

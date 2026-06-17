@@ -19,6 +19,7 @@ from app.models.review_aspect_rating_model import ReviewAspectRating
 from app.models.monthly_review_batch_model import MonthlyReviewBatch
 from app.models.model_update_run_model import ModelUpdateRun
 from app.models.visit_model import Visit
+from app.models.announcement_model import Announcement
 
 __all__ = [
     "Base",
@@ -36,4 +37,5 @@ __all__ = [
     "MonthlyReviewBatch",
     "ModelUpdateRun",
     "Visit",
+    "Announcement",
 ]

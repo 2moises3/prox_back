@@ -43,6 +43,19 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://proxvel_user:proxvel_password@postgres:5432/proxvel_db
+      # Desarrollo: uvicorn recarga al detectar cambios (run.py usa reload=DEBUG).
+      DEBUG: "True"
+      # En bind-mounts de Windows/WSL los eventos de archivo no se propagan;
+      # forzar polling hace que la recarga sí detecte los cambios.
+      WATCHFILES_FORCE_POLLING: "true"
+    volumes:
+      # Monta el código fuente del host: editar aquí se refleja al instante
+      # dentro del contenedor (ya no hay que reconstruir en cada cambio).
+      - .:/app
+      # Volúmenes anónimos para que los venvs del host (pesados y de otra
+      # plataforma) NO entren al contenedor ni ralenticen el watcher.
+      - /app/.venv
+      - /app/venv
 
 volumes:
   proxvel_postgres_data:

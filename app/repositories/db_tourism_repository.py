@@ -118,6 +118,9 @@ def get_map_markers() -> list[dict[str, Any]]:
 
             markers = []
             for c in catalogs:
+                # Ocultar del mapa público los destinos inactivos.
+                if c.destination and not c.destination.is_active:
+                    continue
                 dest_name = c.destination.destination if c.destination else c.destination_id
                 markers.append({
                     "destination_id": c.destination_id,
