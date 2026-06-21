@@ -65,6 +65,17 @@ def get_contextual_ranking(
         _enrich_with_catalog(item)
         results.append(item)
 
+    # Filtrar destinos activos consultando la BD
+    from app.config.database import SessionLocal
+    from app.models.destination_model import Destination
+    db = SessionLocal()
+    try:
+        active_ids = {row[0] for row in db.query(Destination.destination_id).filter(Destination.is_active.is_(True)).all()}
+    finally:
+        db.close()
+        
+    results = [r for r in results if r["destination_id"] in active_ids]
+
     # Filtro por ciudad (ahora funcional con catálogo, Fase 1B)
     if city:
         results = [
@@ -141,6 +152,17 @@ def search_recommendations(
             "final_score": safe_float(row.get("score_final_fase4")),
         }
         results.append(item)
+        
+    # Filtrar destinos activos consultando la BD
+    from app.config.database import SessionLocal
+    from app.models.destination_model import Destination
+    db = SessionLocal()
+    try:
+        active_ids = {db_row[0] for db_row in db.query(Destination.destination_id).filter(Destination.is_active.is_(True)).all()}
+    finally:
+        db.close()
+        
+    results = [r for r in results if r["destination_id"] in active_ids]
 
     # Filtro por ciudad (Fase 1B)
     if city:

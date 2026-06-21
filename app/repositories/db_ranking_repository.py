@@ -62,7 +62,9 @@ def get_contextual_ranking(user_id: str | None = None, city: str | None = None, 
             query = (
                 select(ContextualRanking)
                 .options(joinedload(ContextualRanking.destination_rel))
+                .join(Destination, ContextualRanking.destination_id == Destination.destination_id)
                 .where(ContextualRanking.user_id == target_user_id)
+                .where(Destination.is_active.is_(True))
                 .order_by(ContextualRanking.rank)
             )
             rankings_db = db.scalars(query).all()
@@ -132,6 +134,8 @@ def search_recommendations(query: str | None = None, city: str | None = None, li
             all_rankings = db.scalars(
                 select(ContextualRanking)
                 .options(joinedload(ContextualRanking.destination_rel))
+                .join(Destination, ContextualRanking.destination_id == Destination.destination_id)
+                .where(Destination.is_active.is_(True))
             ).all()
 
             seen = {}

@@ -30,9 +30,10 @@ def get_destination_detail(
     db: Session,
     destination_id: str,
     month: int | None = None,
+    include_inactive: bool = False
 ) -> DestinationDetail | None:
     """Obtiene el detalle completo de un destino mapeado al schema detallado."""
-    raw_detail = destination_repository.get_destination_by_id(destination_id, month=month)
+    raw_detail = destination_repository.get_destination_by_id(destination_id, month=month, include_inactive=include_inactive)
     return DestinationDetail(**raw_detail) if raw_detail else None
 
 def update_destination_admin(db: Session, destination_id: str, update_data: dict[str, Any]) -> DestinationDetail | None:
@@ -46,4 +47,4 @@ def create_destination_admin(db: Session, data: dict[str, Any]) -> dict[str, Any
 def update_absa_scores(db: Session, destination_id: str, scores: dict[str, float | None]) -> DestinationDetail | None:
     """Actualiza los puntajes ABSA de un destino y devuelve el detalle actualizado."""
     destination_repository.upsert_aspect_scores(db, destination_id, scores)
-    return get_destination_detail(db, destination_id)
+    return get_destination_detail(db, destination_id, include_inactive=True)

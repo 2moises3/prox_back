@@ -170,6 +170,7 @@ def get_enrichment_data(destination_id: str, db: Session | None = None) -> dict[
                 "official_name": catalog.official_name,
                 "official_source_url": catalog.official_source_url,
                 "gallery_images": images,
+                "data_status": catalog.data_status,
             }
         finally:
             if not db:

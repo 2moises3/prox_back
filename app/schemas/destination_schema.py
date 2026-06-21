@@ -65,6 +65,7 @@ class DestinationSummary(BaseModel):
     cover_image_url: str | None = None
     official_source_name: str | None = None
     is_active: bool = True
+    data_status: str | None = None
 
 
 class DestinationDetail(DestinationSummary):

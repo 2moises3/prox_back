@@ -57,6 +57,7 @@ def get_all_destinations(city: str | None = None, limit: int = 50, include_inact
                     "cover_image_url": active_covers.get(dest.destination_id),
                     "official_source_name": None,
                     "is_active": dest.is_active,
+                    "data_status": None,
                 }
                 enrichment = db_tourism_repository.get_enrichment_data(dest.destination_id, db=db)
                 if enrichment:
@@ -67,6 +68,7 @@ def get_all_destinations(city: str | None = None, limit: int = 50, include_inact
                         "type": enrichment.get("type"),
                         "subtype": enrichment.get("subtype"),
                         "official_source_name": enrichment.get("official_source_name"),
+                        "data_status": enrichment.get("data_status"),
                     })
                 destinations.append(item)
             
@@ -81,7 +83,7 @@ def get_all_destinations(city: str | None = None, limit: int = 50, include_inact
         return fallback_repo.get_all_destinations(city=city, limit=limit)
 
 
-def get_destination_by_id(destination_id: str, month: int | None = None) -> dict[str, Any] | None:
+def get_destination_by_id(destination_id: str, month: int | None = None, include_inactive: bool = False) -> dict[str, Any] | None:
     try:
         db = SessionLocal()
         try:
@@ -92,6 +94,9 @@ def get_destination_by_id(destination_id: str, month: int | None = None) -> dict
             logger.info(f"PostgreSQL: Leyendo detalle para destination_id={destination_id}.")
             dest = db.scalar(select(Destination).where(Destination.destination_id == destination_id))
             if not dest:
+                return None
+                
+            if not include_inactive and not dest.is_active:
                 return None
 
             scores = db.scalar(select(DestinationAspectScore).where(DestinationAspectScore.destination_id == destination_id))
@@ -183,6 +188,7 @@ def get_destination_by_id(destination_id: str, month: int | None = None) -> dict
                 "weather_detail": weather_detail,
                 "crowd_detail": crowd_detail,
                 "tourism_info": tourism_info,
+                "data_status": enrichment.get("data_status") if enrichment else None,
             }
         finally:
             db.close()
@@ -269,7 +275,7 @@ def set_destination_status(db: Session, destination_id: str, is_active: bool) ->
         return None
     dest.is_active = is_active
     db.commit()
-    return get_destination_by_id(destination_id)
+    return get_destination_by_id(destination_id, include_inactive=True)
 
 
 def update_destination_admin(db: Session, destination_id: str, update_data: dict[str, Any]) -> dict[str, Any] | None:
@@ -294,11 +300,16 @@ def update_destination_admin(db: Session, destination_id: str, update_data: dict
         for field in ["city", "region", "category", "description", "official_source_name", "official_source_url"]:
             if field in update_data and update_data[field] is not None:
                 setattr(tourism, field, update_data[field])
+
+        # Auto-upgrade to ready if all required fields are filled
+        if tourism.data_status == "pending_info":
+            if bool(tourism.city and tourism.region and tourism.category and tourism.description):
+                tourism.data_status = "ready"
                 
         db.commit()
         
         # Return updated detail
-        return get_destination_by_id(destination_id)
+        return get_destination_by_id(destination_id, include_inactive=True)
         
     except Exception as e:
         db.rollback()

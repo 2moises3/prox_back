@@ -180,6 +180,7 @@ def get_enrichment_data(destination_id: str) -> dict[str, Any] | None:
                 "official_name": row.get("official_name"),
                 "official_source_url": row.get("official_source_url"),
                 "gallery_images": _build_gallery_images(row),
+                "data_status": row.get("data_status"),
             }
 
     return None

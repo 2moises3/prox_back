@@ -17,7 +17,7 @@ from app.schemas.destination_schema import (
     DestinationDetail,
     DestinationStatusUpdate,
 )
-from app.services import destination_service, destination_media_service
+from app.services import destination_service, destination_media_service, destination_metric_sync_service
 from app.utils.response_builder import success_response
 
 router = APIRouter(prefix="/admin/destinations", tags=["Admin Destinations"])
@@ -36,6 +36,25 @@ def list_destinations_admin(
         message="Destinos (admin) obtenidos correctamente",
     )
 
+
+# ── Detalle destino admin (incluye inactivos) ───────────────────────────────
+
+@router.get("/{destination_id}", summary="Detalle de destino (admin)")
+def get_destination_admin(
+    destination_id: str,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin_or_super_admin),
+):
+    detail = destination_service.get_destination_detail(db, destination_id, include_inactive=True)
+    if detail is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Destino no encontrado: {destination_id}",
+        )
+    return success_response(
+        data=detail,
+        message="Detalle de destino (admin) obtenido correctamente",
+    )
 
 # ── Crear destino ─────────────────────────────────────────────────────────────
 
@@ -77,6 +96,19 @@ def update_destination(
         raise HTTPException(status_code=500, detail=f"Error inesperado: {e}")
 
 
+# ── Sincronizar desde Métricas (NUEVO FLUJO OFICIAL) ─────────────────────────
+
+@router.post("/sync-from-metrics", summary="Sincronizar destinos desde archivos CSV del motor")
+def sync_from_metrics(
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin_or_super_admin),
+):
+    # En un entorno estricto, esto debería ser solo super_admin
+    # pero usamos el mismo check de rutas admin.
+    result = destination_metric_sync_service.sync_destinations_from_metrics(db)
+    return success_response(data=result, message="Sincronización completada")
+
+
 # ── Activar / desactivar destino ──────────────────────────────────────────────
 
 @router.patch("/{destination_id}/status", summary="Activar o desactivar un destino")
@@ -86,6 +118,33 @@ def set_destination_status(
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_admin_or_super_admin),
 ):
+    if payload.is_active:
+        # Validaciones de reglas de negocio para activación
+        from app.models.tourism_catalog_model import TourismCatalog
+        catalog = db.query(TourismCatalog).filter(TourismCatalog.destination_id == destination_id).first()
+        
+        if not catalog:
+            raise HTTPException(status_code=400, detail="El destino no tiene registro en el catálogo.")
+            
+        if catalog.data_status == "out_of_engine":
+            raise HTTPException(
+                status_code=400, 
+                detail="No se puede activar este destino porque no está completo o no pertenece actualmente al universo válido del motor."
+            )
+            
+        if catalog.data_status in ["pending_info", "metrics_incomplete"]:
+            raise HTTPException(
+                status_code=400, 
+                detail="No se puede activar este destino porque no está completo o no pertenece actualmente al universo válido del motor."
+            )
+            
+        # Validación de campos editoriales mínimos
+        if not all([catalog.city, catalog.region, catalog.category, catalog.description]):
+            raise HTTPException(
+                status_code=400, 
+                detail="No se puede activar este destino porque no está completo o no pertenece actualmente al universo válido del motor."
+            )
+
     updated = destination_service.set_destination_status(db, destination_id, payload.is_active)
     if not updated:
         raise HTTPException(status_code=404, detail=f"Destino no encontrado: {destination_id}")
