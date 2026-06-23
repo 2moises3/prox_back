@@ -23,3 +23,12 @@ def metrics_overview(
 ):
     data = admin_metrics_service.get_overview(db)
     return success_response(data=data, message="Métricas obtenidas correctamente")
+
+
+@router.get("/charts", summary="Datos formateados para gráficos")
+def metrics_charts(
+    db: Session = Depends(get_db),
+    current_user: UserResponse = Depends(require_admin_or_super_admin),
+):
+    data = admin_metrics_service.get_charts_data(db)
+    return success_response(data=data, message="Datos de gráficos obtenidos correctamente")

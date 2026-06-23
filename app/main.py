@@ -11,7 +11,6 @@ from fastapi import FastAPI
 
 from app.config.cors import configure_cors
 from app.config.settings import get_settings
-from app.repositories.csv_loader import load_all_csvs
 from app.routes import (
     data_routes,
     destination_routes,
@@ -31,6 +30,7 @@ from app.routes import (
     admin_user_routes,
     admin_release_routes,
     release_public_routes,
+    admin_import_routes,
 )
 
 # Configurar logging
@@ -46,16 +46,11 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """
     Evento de ciclo de vida de FastAPI.
-    Carga los archivos CSV al iniciar la aplicación.
+    El backend lee 100% desde PostgreSQL; no carga archivos al arrancar.
     """
     settings = get_settings()
     logger.info("Iniciando %s v%s", settings.APP_NAME, settings.APP_VERSION)
-    logger.info("Directorio de datos: %s", settings.data_path)
-
-    # Cargar CSV al startup
-    load_all_csvs(settings.data_path)
-
-    logger.info("Backend listo.")
+    logger.info("Backend listo (fuente de datos: PostgreSQL).")
     yield
     logger.info("Backend detenido.")
 
@@ -101,6 +96,7 @@ def create_app() -> FastAPI:
     app.include_router(admin_destination_routes.router, prefix=api_prefix)
     app.include_router(admin_user_routes.router, prefix=api_prefix)
     app.include_router(admin_release_routes.router, prefix=api_prefix)
+    app.include_router(admin_import_routes.router, prefix=api_prefix)
     app.include_router(release_public_routes.router, prefix=api_prefix)
 
     return app

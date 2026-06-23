@@ -1,7 +1,7 @@
 """
 PROXVEL Backend - User Routes.
 """
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from typing import List
 
 from app.services import user_service
@@ -44,6 +44,48 @@ def update_user(user_id: str, user_update: UserUpdate, current_user: UserRespons
             raise HTTPException(status_code=404, detail=error)
         raise HTTPException(status_code=409, detail=error)
     return success_response(data=updated_user.model_dump(), message="Usuario actualizado")
+
+from app.services.cloudinary_service import upload_avatar_image
+
+@router.post("/{user_id}/avatar", response_model=dict, summary="Subir imagen de perfil")
+async def upload_user_avatar(
+    user_id: str, 
+    file: UploadFile = File(...), 
+    current_user: UserResponse = Depends(get_current_user)
+):
+    if current_user.user_id != user_id:
+        raise HTTPException(status_code=403, detail="No tienes permiso para modificar este avatar")
+        
+    # Verificar que el usuario existe antes de subir a Cloudinary
+    user = user_service.get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+    try:
+        # Leer el contenido del archivo
+        content = await file.read()
+        
+        # Subir a Cloudinary en un folder específico
+        folder_path = "proxvel/users/avatars"
+        result = upload_avatar_image(content, folder_path)
+        secure_url = result.get("secure_url")
+        
+        if not secure_url:
+            raise HTTPException(status_code=500, detail="Error al obtener la URL de Cloudinary")
+            
+        # Actualizar el avatar_url del usuario
+        update_data = UserUpdate(avatar_url=secure_url)
+        updated_user, error = user_service.update_user(user_id, update_data)
+        
+        if error:
+            raise HTTPException(status_code=400, detail=error)
+            
+        return success_response(
+            data={"avatar_url": secure_url}, 
+            message="Imagen de perfil actualizada correctamente"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al procesar la imagen: {str(e)}")
 
 from app.services import traveler_profile_service
 from app.schemas.traveler_profile_schema import TravelerProfileUpdate

@@ -78,15 +78,50 @@ class DestinationDetail(DestinationSummary):
     tourism_info: dict | None = None  # Fase 1B: info del catálogo turístico
 
 class DestinationAdminUpdate(BaseModel):
-    """Payload para actualización administrativa de un destino."""
+    """Payload para actualización administrativa completa de un destino.
 
+    Cubre todos los campos editables de TourismCatalog para que el dashboard
+    tenga control total y se pueda eliminar la dependencia del CSV de catálogo.
+    """
+
+    # Identidad
     name: str | None = None
+    official_name: str | None = None
+
+    # Ubicación administrativa
+    department: str | None = None
+    province: str | None = None
+    district: str | None = None
     city: str | None = None
     region: str | None = None
+
+    # Clasificación turística
     category: str | None = None
+    type: str | None = None
+    subtype: str | None = None
+    hierarchy: int | None = None
+    altitude_m: int | None = None
+
+    # Descripción / experiencia
     description: str | None = None
+    experience_type: str | None = None
+    visitor_info_summary: str | None = None
+    activities_summary: str | None = None
+    accessibility_summary: str | None = None
+
+    # Geolocalización
+    latitude: float | None = None
+    longitude: float | None = None
+    geofence_radius_m: float | None = None
+
+    # Fuentes oficiales
     official_source_name: str | None = None
+    official_source_code: str | None = None
     official_source_url: str | None = None
+    secondary_source_name: str | None = None
+    secondary_source_code: str | None = None
+    secondary_source_url: str | None = None
+    map_source: str | None = None
 
 
 class DestinationAdminCreate(BaseModel):

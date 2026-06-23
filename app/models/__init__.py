@@ -20,6 +20,9 @@ from app.models.monthly_review_batch_model import MonthlyReviewBatch
 from app.models.model_update_run_model import ModelUpdateRun
 from app.models.visit_model import Visit
 from app.models.announcement_model import Announcement
+from app.models.engine_config_model import EngineConfig
+from app.models.destination_tag_model import DestinationTag
+from app.models.destination_month_context_model import DestinationMonthContext
 
 __all__ = [
     "Base",
@@ -38,4 +41,7 @@ __all__ = [
     "ModelUpdateRun",
     "Visit",
     "Announcement",
+    "EngineConfig",
+    "DestinationTag",
+    "DestinationMonthContext",
 ]

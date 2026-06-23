@@ -1,6 +1,6 @@
 """
 PROXVEL Backend - DB Ranking Repository.
-Acceso a datos de ranking contextual desde PostgreSQL con fallback a CSV.
+Acceso a datos de ranking contextual desde PostgreSQL (fuente única).
 """
 
 import logging
@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select
 
 from app.config.database import SessionLocal
-from app.repositories import ranking_repository as fallback_repo
 from app.repositories import db_tourism_repository
 from app.models.contextual_ranking_model import ContextualRanking
 from app.models.destination_model import Destination
@@ -45,8 +44,8 @@ def get_contextual_ranking(user_id: str | None = None, city: str | None = None, 
         db = SessionLocal()
         try:
             if db.query(ContextualRanking).count() == 0:
-                logger.info("PostgreSQL: Tabla contextual_rankings vacía. Fallback a CSV.")
-                return fallback_repo.get_contextual_ranking(user_id=user_id, city=city, limit=limit)
+                logger.info("PostgreSQL: Tabla contextual_rankings vacía.")
+                return []
 
             logger.info("PostgreSQL: Leyendo contextual_rankings.")
             
@@ -114,8 +113,8 @@ def get_contextual_ranking(user_id: str | None = None, city: str | None = None, 
         finally:
             db.close()
     except Exception as e:
-        logger.error("PostgreSQL fallback activado en get_contextual_ranking: %s", e)
-        return fallback_repo.get_contextual_ranking(user_id=user_id, city=city, limit=limit)
+        logger.error("Error en get_contextual_ranking: %s", e)
+        return []
 
 
 def search_recommendations(query: str | None = None, city: str | None = None, limit: int = 10) -> list[dict[str, Any]]:
@@ -123,8 +122,8 @@ def search_recommendations(query: str | None = None, city: str | None = None, li
         db = SessionLocal()
         try:
             if db.query(ContextualRanking).count() == 0:
-                logger.info("PostgreSQL: Tabla contextual_rankings vacía. Fallback a CSV.")
-                return fallback_repo.search_recommendations(query=query, city=city, limit=limit)
+                logger.info("PostgreSQL: Tabla contextual_rankings vacía.")
+                return []
 
             logger.info("PostgreSQL: Buscando recomendaciones en contextual_rankings.")
             
@@ -186,5 +185,5 @@ def search_recommendations(query: str | None = None, city: str | None = None, li
         finally:
             db.close()
     except Exception as e:
-        logger.error("PostgreSQL fallback activado en search_recommendations: %s", e)
-        return fallback_repo.search_recommendations(query=query, city=city, limit=limit)
+        logger.error("Error en search_recommendations: %s", e)
+        return []

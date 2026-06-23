@@ -178,3 +178,40 @@ def delete_user(
     finally:
         db.close()
 
+
+# ── Detalles de usuario ──────────────────────────────────────────────────────
+
+def get_user_details_admin(user_id: str) -> tuple[Optional[dict], Optional[str], Optional[int]]:
+    db = SessionLocal()
+    try:
+        from app.models.user_model import User
+        from app.models.favorite_model import Favorite
+        from app.models.traveler_profile_model import TravelerProfile
+
+        user = db.query(User).filter(User.user_id == user_id).first()
+        if not user:
+            return None, "Usuario no encontrado.", 404
+
+        fav_count = db.query(Favorite).filter(Favorite.user_id == user_id).count()
+        profile = db.query(TravelerProfile).filter(TravelerProfile.user_id == user_id).first()
+
+        aspects = []
+        if profile and profile.aspects:
+            aspects = profile.aspects
+
+        return {
+            "user_id": user.user_id,
+            "name": user.name,
+            "email": user.email,
+            "role": user.role,
+            "is_active": user.is_active,
+            "created_at": user.created_at,
+            "avatar_url": user.avatar_url,
+            "favorites_count": fav_count,
+            "aspects": aspects
+        }, None, None
+    except Exception as e:
+        logger.error(f"Error obteniendo detalles del usuario {user_id}: {e}")
+        return None, "Error interno al obtener detalles.", 500
+    finally:
+        db.close()

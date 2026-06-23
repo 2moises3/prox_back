@@ -87,3 +87,51 @@ def get_overview(db: Session) -> dict:
         },
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
+
+
+def get_charts_data(db: Session) -> dict:
+    """Construye datos formateados para los gráficos de la interfaz."""
+    from app.models.tourism_catalog_model import TourismCatalog
+
+    # Crecimiento de usuarios por mes
+    # Usamos to_char que es nativo de PostgreSQL
+    user_rows = db.execute(
+        select(func.to_char(User.created_at, 'YYYY-MM').label('month'), func.count(User.id))
+        .group_by('month')
+        .order_by('month')
+    ).all()
+    user_growth = [{"month": row[0], "users": row[1]} for row in user_rows if row[0]]
+
+    # Reseñas por mes
+    review_rows = db.execute(
+        select(func.to_char(Review.created_at, 'YYYY-MM').label('month'), func.count(Review.id))
+        .group_by('month')
+        .order_by('month')
+    ).all()
+    reviews_by_month = [{"month": row[0], "reviews": row[1]} for row in review_rows if row[0]]
+
+    # Destinos por categoría
+    cat_rows = db.execute(
+        select(TourismCatalog.category, func.count(TourismCatalog.id))
+        .where(TourismCatalog.category.isnot(None))
+        .group_by(TourismCatalog.category)
+        .order_by(func.count(TourismCatalog.id).desc())
+    ).all()
+    destinations_by_category = [{"name": row[0] or "Sin categoría", "value": row[1]} for row in cat_rows]
+
+    # Destinos por región
+    reg_rows = db.execute(
+        select(TourismCatalog.region, func.count(TourismCatalog.id))
+        .where(TourismCatalog.region.isnot(None))
+        .group_by(TourismCatalog.region)
+        .order_by(func.count(TourismCatalog.id).desc())
+        .limit(10) # Top 10 regiones para no saturar el gráfico
+    ).all()
+    destinations_by_region = [{"name": row[0] or "Sin región", "value": row[1]} for row in reg_rows]
+
+    return {
+        "user_growth": user_growth,
+        "reviews_by_month": reviews_by_month,
+        "destinations_by_category": destinations_by_category,
+        "destinations_by_region": destinations_by_region,
+    }

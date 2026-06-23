@@ -17,7 +17,12 @@ from app.schemas.destination_schema import (
     DestinationDetail,
     DestinationStatusUpdate,
 )
-from app.services import destination_service, destination_media_service, destination_metric_sync_service
+from app.services import (
+    destination_service,
+    destination_media_service,
+    destination_metric_sync_service,
+    destination_merge_service,
+)
 from app.utils.response_builder import success_response
 
 router = APIRouter(prefix="/admin/destinations", tags=["Admin Destinations"])
@@ -98,7 +103,7 @@ def update_destination(
 
 # ── Sincronizar desde Métricas (NUEVO FLUJO OFICIAL) ─────────────────────────
 
-@router.post("/sync-from-metrics", summary="Sincronizar destinos desde archivos CSV del motor")
+@router.post("/sync-from-metrics", summary="Recalcula data_status de todos los destinos desde la BD")
 def sync_from_metrics(
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_admin_or_super_admin),
@@ -128,21 +133,16 @@ def set_destination_status(
             
         if catalog.data_status == "out_of_engine":
             raise HTTPException(
-                status_code=400, 
-                detail="No se puede activar este destino porque no está completo o no pertenece actualmente al universo válido del motor."
+                status_code=400,
+                detail="No se puede activar: el destino no tiene puntajes ABSA. "
+                       "Importa los puntajes desde el dashboard primero.",
             )
-            
-        if catalog.data_status in ["pending_info", "metrics_incomplete"]:
-            raise HTTPException(
-                status_code=400, 
-                detail="No se puede activar este destino porque no está completo o no pertenece actualmente al universo válido del motor."
-            )
-            
-        # Validación de campos editoriales mínimos
+
         if not all([catalog.city, catalog.region, catalog.category, catalog.description]):
             raise HTTPException(
-                status_code=400, 
-                detail="No se puede activar este destino porque no está completo o no pertenece actualmente al universo válido del motor."
+                status_code=400,
+                detail="No se puede activar: faltan campos editoriales obligatorios "
+                       "(ciudad, región, categoría, descripción).",
             )
 
     updated = destination_service.set_destination_status(db, destination_id, payload.is_active)
@@ -195,3 +195,37 @@ def permanent_delete_media(
     if not success:
         raise HTTPException(status_code=404, detail="Imagen no encontrada")
     return success_response(data=None, message="Imagen eliminada permanentemente")
+
+
+# ── Fusionar destino (elimina source, conserva target) ───────────────────────
+
+@router.post(
+    "/{source_id}/merge-into/{target_id}",
+    summary="Fusiona el destino origen en el destino canónico y elimina el origen",
+)
+def merge_destination(
+    source_id: str,
+    target_id: str,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin_or_super_admin),
+):
+    result = destination_merge_service.merge_destinations(db, source_id, target_id)
+    return success_response(
+        data=result,
+        message=f"Fusión completada. '{source_id}' eliminado, datos migrados a '{target_id}'.",
+    )
+
+
+# ── Eliminar destino permanentemente ──────────────────────────────────────────
+
+@router.delete("/{destination_id}", summary="Eliminar destino permanentemente")
+def delete_destination(
+    destination_id: str,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin_or_super_admin),
+):
+    from app.repositories import db_destination_repository
+    success = db_destination_repository.delete_destination_admin(db, destination_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Destino no encontrado: {destination_id}")
+    return success_response(data=None, message="Destino y todos sus datos eliminados permanentemente")

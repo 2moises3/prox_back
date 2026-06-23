@@ -1,6 +1,6 @@
 """
 PROXVEL Backend - DB Destination Repository.
-Acceso a datos de destinos desde PostgreSQL con fallback a CSV.
+Acceso a datos de destinos desde PostgreSQL (fuente única).
 """
 
 import logging
@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from app.config.database import SessionLocal
-from app.repositories import destination_repository as fallback_repo
 from app.repositories import db_tourism_repository
 from app.models.destination_model import Destination
 from app.models.aspect_score_model import DestinationAspectScore
@@ -30,8 +29,8 @@ def get_all_destinations(city: str | None = None, limit: int = 50, include_inact
         db = SessionLocal()
         try:
             if db.query(Destination).count() == 0:
-                logger.info("PostgreSQL: Tabla destinations vacía. Fallback a CSV.")
-                return fallback_repo.get_all_destinations(city=city, limit=limit)
+                logger.info("PostgreSQL: Tabla destinations vacía.")
+                return []
 
             logger.info("PostgreSQL: Leyendo destinations.")
             stmt = select(Destination)
@@ -79,8 +78,8 @@ def get_all_destinations(city: str | None = None, limit: int = 50, include_inact
         finally:
             db.close()
     except Exception as e:
-        logger.error("PostgreSQL fallback activado en get_all_destinations: %s", e)
-        return fallback_repo.get_all_destinations(city=city, limit=limit)
+        logger.error("Error en get_all_destinations: %s", e)
+        return []
 
 
 def get_destination_by_id(destination_id: str, month: int | None = None, include_inactive: bool = False) -> dict[str, Any] | None:
@@ -88,8 +87,8 @@ def get_destination_by_id(destination_id: str, month: int | None = None, include
         db = SessionLocal()
         try:
             if db.query(Destination).count() == 0:
-                logger.info("PostgreSQL: Tabla destinations vacía. Fallback a CSV.")
-                return fallback_repo.get_destination_by_id(destination_id, month=month)
+                logger.info("PostgreSQL: Tabla destinations vacía.")
+                return None
 
             logger.info(f"PostgreSQL: Leyendo detalle para destination_id={destination_id}.")
             dest = db.scalar(select(Destination).where(Destination.destination_id == destination_id))
@@ -160,11 +159,29 @@ def get_destination_by_id(destination_id: str, month: int | None = None, include
             if enrichment:
                 tourism_info = {
                     "official_name": enrichment.get("official_name"),
+                    "department": enrichment.get("department"),
+                    "province": enrichment.get("province"),
+                    "district": enrichment.get("district"),
+                    "type": enrichment.get("type"),
+                    "subtype": enrichment.get("subtype"),
+                    "hierarchy": enrichment.get("hierarchy"),
+                    "altitude_m": enrichment.get("altitude_m"),
                     "description": enrichment.get("description"),
                     "experience_type": enrichment.get("experience_type"),
+                    "visitor_info_summary": enrichment.get("visitor_info_summary"),
+                    "activities_summary": enrichment.get("activities_summary"),
+                    "accessibility_summary": enrichment.get("accessibility_summary"),
+                    "latitude": enrichment.get("latitude"),
+                    "longitude": enrichment.get("longitude"),
+                    "geofence_radius_m": enrichment.get("geofence_radius_m"),
                     "gallery_images": [g.url for g in media.gallery] if media.gallery else [],
                     "official_source_name": enrichment.get("official_source_name"),
+                    "official_source_code": enrichment.get("official_source_code"),
                     "official_source_url": enrichment.get("official_source_url"),
+                    "secondary_source_name": enrichment.get("secondary_source_name"),
+                    "secondary_source_code": enrichment.get("secondary_source_code"),
+                    "secondary_source_url": enrichment.get("secondary_source_url"),
+                    "map_source": enrichment.get("map_source"),
                 }
 
             return {
@@ -193,8 +210,8 @@ def get_destination_by_id(destination_id: str, month: int | None = None, include
         finally:
             db.close()
     except Exception as e:
-        logger.error("PostgreSQL fallback activado en get_destination_by_id: %s", e)
-        return fallback_repo.get_destination_by_id(destination_id)
+        logger.error("Error en get_destination_by_id: %s", e)
+        return None
 
 _ABSA_ASPECTS = [
     "accesibilidad", "aforo_multitudes", "alojamiento", "atencion_servicio",
@@ -243,17 +260,22 @@ def create_destination_admin(db: Session, data: dict[str, Any]) -> dict[str, Any
     db.flush()
 
     from app.models.tourism_catalog_model import TourismCatalog
+    has_editorial = bool(
+        data.get("city") and data.get("region") and
+        data.get("category") and data.get("description")
+    )
     catalog = TourismCatalog(
         destination_id=destination_id,
         city=data.get("city"),
         region=data.get("region"),
         category=data.get("category"),
         description=data.get("description"),
+        data_status="ready" if has_editorial else "pending_info",
     )
     db.add(catalog)
 
-    # Puntajes ABSA neutros (0.5) para que el destino aparezca en recomendaciones
-    # desde el primer momento. El admin puede ajustarlos desde el panel de contexto.
+    # Puntajes ABSA neutros (0.5) para que el destino entre al motor desde el primer momento.
+    # El admin ajusta los reales vía importación CSV o edición manual.
     neutral = {a: 0.5 for a in _ABSA_ASPECTS}
     db.add(DestinationAspectScore(destination_id=destination_id, **neutral))
 
@@ -295,17 +317,32 @@ def update_destination_admin(db: Session, destination_id: str, update_data: dict
         # Update Destination table
         if "name" in update_data and update_data["name"] is not None:
             dest.destination = update_data["name"]
-            
-        # Update TourismCatalog table
-        for field in ["city", "region", "category", "description", "official_source_name", "official_source_url"]:
+
+        # Campos editables de TourismCatalog. El payload usa 'type' pero el
+        # atributo del modelo es 'type_' (la columna se llama "type").
+        _CATALOG_FIELDS = [
+            "official_name", "department", "province", "district", "city", "region",
+            "category", "subtype", "hierarchy", "altitude_m",
+            "description", "experience_type", "visitor_info_summary",
+            "activities_summary", "accessibility_summary",
+            "latitude", "longitude", "geofence_radius_m",
+            "official_source_name", "official_source_code", "official_source_url",
+            "secondary_source_name", "secondary_source_code", "secondary_source_url",
+            "map_source",
+        ]
+        for field in _CATALOG_FIELDS:
             if field in update_data and update_data[field] is not None:
                 setattr(tourism, field, update_data[field])
 
-        # Auto-upgrade to ready if all required fields are filled
-        if tourism.data_status == "pending_info":
-            if bool(tourism.city and tourism.region and tourism.category and tourism.description):
-                tourism.data_status = "ready"
-                
+        # 'type' → atributo 'type_' del modelo
+        if "type" in update_data and update_data["type"] is not None:
+            tourism.type_ = update_data["type"]
+
+        db.commit()
+
+        # Recalcular data_status tras cambios editoriales
+        from app.services.destination_metric_sync_service import recalculate_status
+        recalculate_status(db, destination_id)
         db.commit()
         
         # Return updated detail
@@ -314,4 +351,49 @@ def update_destination_admin(db: Session, destination_id: str, update_data: dict
     except Exception as e:
         db.rollback()
         logger.error("Error updating destination %s: %s", destination_id, e)
+        raise e
+
+
+def delete_destination_admin(db: Session, destination_id: str) -> bool:
+    """Elimina definitivamente un destino y todos sus datos en cascada manual."""
+    try:
+        from app.models.tourism_catalog_model import TourismCatalog
+        from app.models.aspect_score_model import DestinationAspectScore
+        from app.models.climate_score_model import ClimateScore
+        from app.models.crowd_score_model import CrowdScore
+        from app.models.contextual_ranking_model import ContextualRanking
+        from app.models.favorite_model import Favorite
+        from app.models.review_model import Review
+        from app.models.visit_model import Visit
+        from app.models.destination_media_model import DestinationMedia
+
+        dest = db.scalar(select(Destination).where(Destination.destination_id == destination_id))
+        if not dest:
+            return False
+
+        # Datos de usuarios (Favoritos, Reseñas, Visitas, Rankings)
+        db.query(Favorite).filter(Favorite.destination_id == destination_id).delete(synchronize_session=False)
+        db.query(Review).filter(Review.destination_id == destination_id).delete(synchronize_session=False)
+        db.query(Visit).filter(Visit.destination_id == destination_id).delete(synchronize_session=False)
+        db.query(ContextualRanking).filter(ContextualRanking.destination_id == destination_id).delete(synchronize_session=False)
+
+        # Multimedia
+        db.query(DestinationMedia).filter(DestinationMedia.destination_id == destination_id).delete(synchronize_session=False)
+
+        # Scores y métricas
+        db.query(DestinationAspectScore).filter(DestinationAspectScore.destination_id == destination_id).delete(synchronize_session=False)
+        db.query(ClimateScore).filter(ClimateScore.destination_id == destination_id).delete(synchronize_session=False)
+        db.query(CrowdScore).filter(CrowdScore.destination_id == destination_id).delete(synchronize_session=False)
+
+        # Catálogo
+        db.query(TourismCatalog).filter(TourismCatalog.destination_id == destination_id).delete(synchronize_session=False)
+
+        # Destino principal
+        db.query(Destination).filter(Destination.destination_id == destination_id).delete(synchronize_session=False)
+
+        db.commit()
+        return True
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error eliminando destino {destination_id}: {e}")
         raise e

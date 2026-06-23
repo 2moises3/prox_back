@@ -11,7 +11,7 @@ from app.schemas.recommendation_schema import RecommendationMeResponse
 from app.services import (
     contextual_ranking_service,
     recommendation_service,
-    recommendation_engine_v0,
+    recommendation_engine_v1,
     traveler_profile_service
 )
 from app.utils.response_builder import success_response
@@ -45,8 +45,8 @@ def get_my_recommendations(
             detail="El usuario no cuenta con un perfil de viaje. Completa el Onboarding primero."
         )
 
-    # 2. Computar recomendaciones usando motor dinámico V0
-    results = recommendation_engine_v0.generate_recommendations(
+    # 2. Computar recomendaciones usando motor V1 (Fase 3+4, 10 destinos)
+    results = recommendation_engine_v1.generate_recommendations(
         user_profile=profile.model_dump(),
         limit=limit
     )
@@ -56,10 +56,10 @@ def get_my_recommendations(
         success=True,
         message="Recomendaciones personalizadas generadas correctamente",
         engine={
-            "source": "engine_v0",
-            "version": "0.1",
-            "is_final_model": False,
-            "metrics_status": "en_mejora"
+            "source": "engine_v1",
+            "version": "1.0",
+            "is_final_model": True,
+            "metrics_status": "produccion"
         },
         data=results
     )

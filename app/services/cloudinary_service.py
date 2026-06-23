@@ -85,6 +85,28 @@ def upload_announcement_image(file: UploadFile, announcement_id: int) -> dict:
         logger.error(f"Error subiendo imagen de anuncio a Cloudinary: {e}")
         raise HTTPException(status_code=500, detail="Fallo al subir la imagen del anuncio.")
 
+def upload_avatar_image(file_content: bytes, folder_path: str) -> dict:
+    """Sube una imagen de avatar a Cloudinary desde bytes."""
+    if not settings.CLOUDINARY_CLOUD_NAME:
+        raise HTTPException(status_code=500, detail="Cloudinary no está configurado en el backend.")
+
+    unique_id = uuid.uuid4().hex[:8]
+    public_id = f"{folder_path}/{unique_id}"
+
+    try:
+        response = cloudinary.uploader.upload(
+            file_content,
+            public_id=public_id,
+            resource_type="image",
+            overwrite=True,
+        )
+        return {
+            "secure_url": response.get("secure_url"),
+            "public_id": response.get("public_id"),
+        }
+    except Exception as e:
+        logger.error(f"Error subiendo avatar a Cloudinary: {e}")
+        raise HTTPException(status_code=500, detail="Fallo al subir la imagen del avatar.")
 
 def upload_release_apk(file: UploadFile, version_name: str) -> dict:
     """Sube una APK a Cloudinary como recurso 'raw'.

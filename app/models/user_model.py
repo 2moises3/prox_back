@@ -19,6 +19,7 @@ class User(Base, TimestampMixin):
     password_hash: Mapped[str] = mapped_column(String, nullable=False)
     role: Mapped[str] = mapped_column(String, default="traveler")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    avatar_url: Mapped[str | None] = mapped_column(String)
 
     # Relaciones
     traveler_profiles = relationship("TravelerProfile", back_populates="user")

@@ -80,3 +80,33 @@ def generate_destination_id(destination_name: str) -> str:
 def clean_column_name(col: str) -> str:
     """Limpia nombres de columna: elimina BOM, espacios, etc."""
     return col.strip().lstrip("\ufeff").strip()
+
+
+# Palabras vac\u00edas que no aportan identidad a un destino.
+_STOP_WORDS = {
+    "de", "del", "la", "las", "los", "el", "y", "e", "a", "en",
+    "con", "por", "para", "al", "sin", "o", "u", "un", "una",
+    "historico", "historica", "nacional", "sitio",
+}
+
+
+def destination_word_set(name: str) -> frozenset[str]:
+    """
+    Tokeniza y normaliza un nombre de destino para comparaci\u00f3n de similitud.
+    Devuelve el conjunto de palabras significativas (sin stop words, sin acentos).
+    """
+    if not name:
+        return frozenset()
+    s = name.lower().strip()
+    for orig, repl in [("\u00e1","a"),("\u00e9","e"),("\u00ed","i"),("\u00f3","o"),("\u00fa","u"),("\u00f1","n"),("\u00fc","u")]:
+        s = s.replace(orig, repl)
+    words = re.sub(r"[^a-z0-9\s]", " ", s).split()
+    return frozenset(w for w in words if w not in _STOP_WORDS and len(w) > 2)
+
+
+def jaccard_similarity(a: frozenset, b: frozenset) -> float:
+    """Similitud Jaccard entre dos conjuntos de palabras."""
+    if not a or not b:
+        return 0.0
+    union = len(a | b)
+    return len(a & b) / union if union else 0.0

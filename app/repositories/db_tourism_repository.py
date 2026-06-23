@@ -1,6 +1,6 @@
 """
 PROXVEL Backend - DB Tourism Repository.
-Acceso a datos del catálogo turístico oficial desde PostgreSQL con fallback a CSV.
+Acceso a datos del catálogo turístico oficial desde PostgreSQL (fuente única).
 """
 
 import logging
@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select
 
 from app.config.database import SessionLocal
-from app.repositories import tourism_repository as fallback_repo
 from app.models.tourism_catalog_model import TourismCatalog
 
 logger = logging.getLogger(__name__)
@@ -65,8 +64,8 @@ def get_all_catalog() -> list[dict[str, Any]]:
         try:
             total = db.query(TourismCatalog).count()
             if total == 0:
-                logger.info("PostgreSQL: Tabla tourism_catalog vacía. Fallback a CSV.")
-                return fallback_repo.get_all_catalog()
+                logger.info("PostgreSQL: Tabla tourism_catalog vacía.")
+                return []
 
             logger.info("PostgreSQL: Leyendo tourism_catalog.")
             catalogs = db.scalars(select(TourismCatalog).options(joinedload(TourismCatalog.destination))).all()
@@ -74,8 +73,8 @@ def get_all_catalog() -> list[dict[str, Any]]:
         finally:
             db.close()
     except Exception as e:
-        logger.error("PostgreSQL fallback activado en get_all_catalog: %s", e)
-        return fallback_repo.get_all_catalog()
+        logger.error("Error en get_all_catalog: %s", e)
+        return []
 
 
 def get_catalog_by_id(destination_id: str) -> dict[str, Any] | None:
@@ -83,8 +82,8 @@ def get_catalog_by_id(destination_id: str) -> dict[str, Any] | None:
         db = SessionLocal()
         try:
             if db.query(TourismCatalog).count() == 0:
-                logger.info("PostgreSQL: Tabla tourism_catalog vacía. Fallback a CSV.")
-                return fallback_repo.get_catalog_by_id(destination_id)
+                logger.info("PostgreSQL: Tabla tourism_catalog vacía.")
+                return None
 
             logger.info(f"PostgreSQL: Leyendo catalog para {destination_id}.")
             catalog = db.scalar(
@@ -96,8 +95,8 @@ def get_catalog_by_id(destination_id: str) -> dict[str, Any] | None:
         finally:
             db.close()
     except Exception as e:
-        logger.error("PostgreSQL fallback activado en get_catalog_by_id: %s", e)
-        return fallback_repo.get_catalog_by_id(destination_id)
+        logger.error("Error en get_catalog_by_id: %s", e)
+        return None
 
 
 def get_map_markers() -> list[dict[str, Any]]:
@@ -105,8 +104,8 @@ def get_map_markers() -> list[dict[str, Any]]:
         db = SessionLocal()
         try:
             if db.query(TourismCatalog).count() == 0:
-                logger.info("PostgreSQL: Tabla tourism_catalog vacía. Fallback a CSV.")
-                return fallback_repo.get_map_markers()
+                logger.info("PostgreSQL: Tabla tourism_catalog vacía.")
+                return []
 
             logger.info("PostgreSQL: Leyendo map_markers.")
             catalogs = db.scalars(
@@ -134,8 +133,8 @@ def get_map_markers() -> list[dict[str, Any]]:
         finally:
             db.close()
     except Exception as e:
-        logger.error("PostgreSQL fallback activado en get_map_markers: %s", e)
-        return fallback_repo.get_map_markers()
+        logger.error("Error en get_map_markers: %s", e)
+        return []
 
 
 def get_enrichment_data(destination_id: str, db: Session | None = None) -> dict[str, Any] | None:
@@ -144,7 +143,7 @@ def get_enrichment_data(destination_id: str, db: Session | None = None) -> dict[
         session = db or SessionLocal()
         try:
             if session.query(TourismCatalog).count() == 0:
-                return fallback_repo.get_enrichment_data(destination_id)
+                return None
 
             catalog = session.scalar(
                 select(TourismCatalog).where(TourismCatalog.destination_id == destination_id)
@@ -158,23 +157,47 @@ def get_enrichment_data(destination_id: str, db: Session | None = None) -> dict[
                     images.append(img)
 
             return {
+                # Identidad
+                "official_name": catalog.official_name,
+                # Ubicación administrativa
+                "department": catalog.department,
+                "province": catalog.province,
+                "district": catalog.district,
                 "city": catalog.city,
                 "region": catalog.region,
+                # Clasificación turística
                 "category": catalog.category,
                 "type": catalog.type_,
                 "subtype": catalog.subtype,
-                "cover_image_url": catalog.cover_image_url,
-                "official_source_name": catalog.official_source_name,
+                "hierarchy": catalog.hierarchy,
+                "altitude_m": catalog.altitude_m,
+                # Descripción / experiencia
                 "description": catalog.description,
                 "experience_type": catalog.experience_type,
-                "official_name": catalog.official_name,
-                "official_source_url": catalog.official_source_url,
+                "visitor_info_summary": catalog.visitor_info_summary,
+                "activities_summary": catalog.activities_summary,
+                "accessibility_summary": catalog.accessibility_summary,
+                # Geolocalización
+                "latitude": catalog.latitude,
+                "longitude": catalog.longitude,
+                "geofence_radius_m": catalog.geofence_radius_m,
+                # Multimedia
+                "cover_image_url": catalog.cover_image_url,
                 "gallery_images": images,
+                # Fuentes oficiales
+                "official_source_name": catalog.official_source_name,
+                "official_source_code": catalog.official_source_code,
+                "official_source_url": catalog.official_source_url,
+                "secondary_source_name": catalog.secondary_source_name,
+                "secondary_source_code": catalog.secondary_source_code,
+                "secondary_source_url": catalog.secondary_source_url,
+                "map_source": catalog.map_source,
+                # Estado
                 "data_status": catalog.data_status,
             }
         finally:
             if not db:
                 session.close()
     except Exception as e:
-        logger.error("PostgreSQL fallback activado en get_enrichment_data: %s", e)
-        return fallback_repo.get_enrichment_data(destination_id)
+        logger.error("Error en get_enrichment_data: %s", e)
+        return None

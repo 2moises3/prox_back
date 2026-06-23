@@ -17,11 +17,13 @@ class UserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
     password: Optional[str] = Field(None, min_length=6)
+    avatar_url: Optional[str] = None
 
 class UserResponse(UserBase):
     user_id: str
     role: str
     is_active: bool
+    avatar_url: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -56,6 +58,7 @@ class AdminUserResponse(BaseModel):
     email: str
     role: str
     is_active: bool
+    avatar_url: Optional[str] = None
     created_at: datetime
 
     class Config:

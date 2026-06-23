@@ -102,3 +102,13 @@ def delete_user(
     action_msg = "Cuenta y datos eliminados" if mode == "full" else "Datos del usuario limpiados"
     return success_response(data=result, message=f"{action_msg} correctamente")
 
+
+@router.get("/{user_id}/details", summary="Obtener detalles básicos de un usuario (admin)")
+def get_user_details(
+    user_id: str,
+    current_user: UserResponse = Depends(require_admin_or_super_admin),
+):
+    result, error, status_code = user_admin_service.get_user_details_admin(user_id)
+    if error:
+        raise HTTPException(status_code=status_code or 400, detail=error)
+    return success_response(data=result, message="Detalles obtenidos correctamente")
