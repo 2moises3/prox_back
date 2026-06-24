@@ -152,6 +152,10 @@ def generate_recommendations(user_profile: dict, limit: int = 10) -> list[dict]:
         ).scalars():
             ctx_by_dest[c.destination_id] = c
 
+        # Covers from DestinationMedia (Cloudinary)
+        from app.services import destination_media_service
+        active_covers = destination_media_service.get_covers_batch(db)
+
         raw = []
         for dest, cat, absa in rows:
             did = dest.destination_id
@@ -193,7 +197,7 @@ def generate_recommendations(user_profile: dict, limit: int = 10) -> list[dict]:
                 "city":            cat.city if cat else None,
                 "region":          cat.region if cat else None,
                 "category":        cat.category if cat else None,
-                "cover_image_url": cat.cover_image_url if cat else None,
+                "cover_image_url": active_covers.get(did),
                 "score":           score,
                 "clima_nivel":     clima_nivel,
                 "aforo_nivel":     aforo_nivel,
