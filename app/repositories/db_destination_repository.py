@@ -150,6 +150,38 @@ def get_destination_by_id(destination_id: str, month: int | None = None, include
                     "score_aforo_base": aforo.score_aforo_base,
                 }
 
+            # Fallback: ClimateScore/CrowdScore son parciales (pocos destinos).
+            # Si falta clima/aforo del mes, se usa destination_month_context, que
+            # es la fuente COMPLETA del motor (clima/aforo de los 10 destinos).
+            if (not weather_detail or not crowd_detail) and month is not None:
+                from app.models.destination_month_context_model import DestinationMonthContext
+                ctx = db.scalar(
+                    select(DestinationMonthContext).where(
+                        DestinationMonthContext.destination_id == destination_id,
+                        DestinationMonthContext.month == month,
+                    )
+                )
+                if ctx:
+                    if not weather_detail and ctx.clima_score is not None:
+                        weather_detail = {
+                            "month": ctx.month,
+                            "month_name": _MONTH_NAMES.get(ctx.month),
+                            "temp_prom": ctx.temp_prom,
+                            "pp": ctx.pp,
+                            "clima_categoria": ctx.clima_nivel,
+                            "score_clima": ctx.clima_score,
+                        }
+                    if not crowd_detail and ctx.aforo_score is not None:
+                        crowd_detail = {
+                            "month": ctx.month,
+                            "month_name": _MONTH_NAMES.get(ctx.month),
+                            "periodo": None,
+                            "visitantes_mes": None,
+                            "aforo_normalizado": None,
+                            "nivel_aforo": ctx.aforo_nivel,
+                            "score_aforo_base": ctx.aforo_score,
+                        }
+
             from app.services import destination_media_service
             media = destination_media_service.get_destination_media(db, destination_id)
             cover_url = media.cover.url if media.cover else None

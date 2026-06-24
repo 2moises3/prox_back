@@ -101,7 +101,37 @@ def _afinidad_clima(pref: str, temp, pp) -> float:
     return 0.5
 
 
-def generate_recommendations(user_profile: dict, limit: int = 10) -> list[dict]:
+MONTH_NAMES = {
+    1: "enero", 2: "febrero", 3: "marzo", 4: "abril", 5: "mayo", 6: "junio",
+    7: "julio", 8: "agosto", 9: "septiembre", 10: "octubre", 11: "noviembre", 12: "diciembre",
+}
+
+
+def _label(pct: int) -> str:
+    """Etiqueta cualitativa por rango (en vez de mostrar el % crudo)."""
+    if pct >= 70: return "Excelente para ti"
+    if pct >= 60: return "Muy recomendado"
+    if pct >= 50: return "Recomendado"
+    if pct >= 40: return "Podría gustarte"
+    return "Alternativa"
+
+
+def _contexto_C(ctx, pref_clima: str, ftol: float, w_clima: float, w_aforo: float) -> float:
+    """Componente contextual C en [0,1] (clima + aforo personalizados) para un mes."""
+    clima_score = ctx.clima_score if ctx and ctx.clima_score is not None else _NEUTRAL
+    aforo_score = ctx.aforo_score if ctx and ctx.aforo_score is not None else _NEUTRAL
+    temp_prom   = ctx.temp_prom if ctx else None
+    pp          = ctx.pp if ctx else None
+    afc        = _afinidad_clima(pref_clima, temp_prom, pp)
+    clima_pers = _clip(clima_score * (0.7 + 0.6 * afc))
+    aforo_pers = _clip(0.5 + (aforo_score - 0.5) * ftol)
+    return w_clima * clima_pers + w_aforo * aforo_pers
+
+
+def generate_recommendations(
+    user_profile: dict, limit: int = 10,
+    month: int | None = None, region: str | None = None,
+) -> list[dict]:
     db: Session = SessionLocal()
     try:
         cfg = _load_config(db)
@@ -112,7 +142,9 @@ def generate_recommendations(user_profile: dict, limit: int = 10) -> list[dict]:
         w_aforo = float(cfg["w_aforo"])
         ftol_map = cfg["factor_tolerancia"]
 
-        mes = datetime.now().month
+        # Mes objetivo: el que pida el usuario (1-12) o el actual por defecto.
+        mes = int(month) if month and 1 <= int(month) <= 12 else datetime.now().month
+        region_f = _norm(region) if region else None
         w   = _pesos_desde_perfil(user_profile)
 
         intereses  = {_norm(i) for i in (user_profile.get("intereses") or [])}
@@ -142,15 +174,14 @@ def generate_recommendations(user_profile: dict, limit: int = 10) -> list[dict]:
         ).scalars():
             tags_by_dest.setdefault(t.destination_id, set()).add(_norm(t.tag))
 
-        # Contexto del mes actual (batch).
-        ctx_by_dest: dict[str, DestinationMonthContext] = {}
+        # Contexto de los 12 meses (batch) -> permite mes objetivo + "mejor mes para ti".
+        ctx_by_dest_month: dict[tuple[str, int], DestinationMonthContext] = {}
         for c in db.execute(
             select(DestinationMonthContext).where(
                 DestinationMonthContext.destination_id.in_(dest_ids),
-                DestinationMonthContext.month == mes,
             )
         ).scalars():
-            ctx_by_dest[c.destination_id] = c
+            ctx_by_dest_month[(c.destination_id, c.month)] = c
 
         # Covers from DestinationMedia (Cloudinary)
         from app.services import destination_media_service
@@ -159,6 +190,11 @@ def generate_recommendations(user_profile: dict, limit: int = 10) -> list[dict]:
         raw = []
         for dest, cat, absa in rows:
             did = dest.destination_id
+
+            # Filtro por departamento/región (si se indica).
+            if region_f and _norm(cat.region if cat else "") != region_f:
+                continue
+
             absa_vals = {
                 a: (getattr(absa, a) if absa and getattr(absa, a) is not None else _NEUTRAL)
                 for a in _CORE
@@ -169,19 +205,20 @@ def generate_recommendations(user_profile: dict, limit: int = 10) -> list[dict]:
             match_int = (len(intereses & tags) / len(intereses)) if intereses else 0.0
             afinidad  = (1 - beta_in) * score_absa + beta_in * match_int
 
-            ctx = ctx_by_dest.get(did)
-            clima_score = ctx.clima_score if ctx and ctx.clima_score is not None else _NEUTRAL
-            aforo_score = ctx.aforo_score if ctx and ctx.aforo_score is not None else _NEUTRAL
-            temp_prom   = ctx.temp_prom if ctx else None
-            pp          = ctx.pp if ctx else None
+            # --- Score del mes objetivo ---
+            ctx = ctx_by_dest_month.get((did, mes))
             clima_nivel = ctx.clima_nivel if ctx else "Sin dato"
             aforo_nivel = ctx.aforo_nivel if ctx else "Sin dato"
+            C     = _contexto_C(ctx, pref_clima, ftol, w_clima, w_aforo)
+            score = _clip(alpha * afinidad + beta_cx * (C - 0.5))
 
-            afc        = _afinidad_clima(pref_clima, temp_prom, pp)
-            clima_pers = _clip(clima_score * (0.7 + 0.6 * afc))
-            aforo_pers = _clip(0.5 + (aforo_score - 0.5) * ftol)
-            C          = w_clima * clima_pers + w_aforo * aforo_pers
-            score      = _clip(alpha * afinidad + beta_cx * (C - 0.5))
+            # --- Mejor mes para ESTE perfil (re-evalúa el contexto en los 12 meses) ---
+            best_m, best_s = mes, -1.0
+            for m in range(1, 13):
+                cm = _contexto_C(ctx_by_dest_month.get((did, m)), pref_clima, ftol, w_clima, w_aforo)
+                sm = _clip(alpha * afinidad + beta_cx * (cm - 0.5))
+                if sm > best_s:
+                    best_s, best_m = sm, m
 
             top_aspects = sorted(
                 [{"aspect": a, "user_weight": round(w.get(a, 0.0), 3),
@@ -201,6 +238,8 @@ def generate_recommendations(user_profile: dict, limit: int = 10) -> list[dict]:
                 "score":           score,
                 "clima_nivel":     clima_nivel,
                 "aforo_nivel":     aforo_nivel,
+                "best_month":      best_m,
+                "best_month_score": round(best_s, 4),
                 "has_real_scores": absa is not None,
                 "top_aspects":     top_aspects,
             })
@@ -212,6 +251,10 @@ def generate_recommendations(user_profile: dict, limit: int = 10) -> list[dict]:
         for rank, r in enumerate(top, 1):
             compat_score = round(r["score"], 4)
             compat_pct   = round(compat_score * 100)
+            label        = _label(compat_pct)
+            best_m       = r["best_month"]
+            best_m_name  = MONTH_NAMES.get(best_m, "")
+            mes_name     = MONTH_NAMES.get(mes, "")
             items.append({
                 "destination_id":        r["destination_id"],
                 "name":                  r["name"],
@@ -222,11 +265,16 @@ def generate_recommendations(user_profile: dict, limit: int = 10) -> list[dict]:
                 "rating":                None,
                 "compatibility_score":   compat_score,
                 "compatibility_percent": compat_pct,
-                "context_status":        f"Clima {r['clima_nivel']} · Aforo {r['aforo_nivel']}",
+                "label":                 label,
+                "month":                 mes,
+                "month_name":            mes_name,
+                "best_month":            best_m,
+                "best_month_name":       best_m_name,
+                "context_status":        f"Clima {r['clima_nivel']} · Aforo {r['aforo_nivel']} · {mes_name.capitalize()}",
                 "ranking_position":      rank,
                 "has_real_scores":       r["has_real_scores"],
                 "explanation": {
-                    "summary":     f"{compat_pct}% de compatibilidad con tu perfil de viaje",
+                    "summary":     f"{label} para tu perfil · mejor mes para ir: {best_m_name}",
                     "top_aspects": r["top_aspects"],
                 },
             })

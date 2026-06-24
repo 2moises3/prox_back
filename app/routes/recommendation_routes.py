@@ -29,6 +29,8 @@ router = APIRouter(prefix="/recommendations", tags=["Recommendations"])
 )
 def get_my_recommendations(
     limit: int = Query(10, ge=1, le=100, description="Límite de resultados"),
+    month: int | None = Query(None, ge=1, le=12, description="Mes objetivo 1-12 (por defecto, el actual)"),
+    region: str | None = Query(None, description="Filtrar por departamento/región"),
     current_user: UserResponse = Depends(get_current_user),
 ):
     """Genera recomendaciones matemáticas on-the-fly para el usuario autenticado."""
@@ -48,7 +50,9 @@ def get_my_recommendations(
     # 2. Computar recomendaciones usando motor V1 (Fase 3+4, 10 destinos)
     results = recommendation_engine_v1.generate_recommendations(
         user_profile=profile.model_dump(),
-        limit=limit
+        limit=limit,
+        month=month,
+        region=region,
     )
 
     # 3. Retornar contrato estricto

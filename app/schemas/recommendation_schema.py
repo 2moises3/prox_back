@@ -71,8 +71,14 @@ class RecommendationMeItem(BaseModel):
     rating: float | None = None
     compatibility_score: float
     compatibility_percent: int
+    label: str | None = None
+    month: int | None = None
+    month_name: str | None = None
+    best_month: int | None = None
+    best_month_name: str | None = None
     context_status: str | None = None
     ranking_position: int
+    has_real_scores: bool | None = None
     explanation: RecommendationExplanation
 
 class RecommendationMeResponse(BaseModel):
