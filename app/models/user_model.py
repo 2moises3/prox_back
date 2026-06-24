@@ -23,6 +23,7 @@ class User(Base, TimestampMixin):
 
     # Relaciones
     traveler_profiles = relationship("TravelerProfile", back_populates="user")
-    favorites = relationship("Favorite", back_populates="user")
+    favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
+    archives = relationship("Archive", back_populates="user", cascade="all, delete-orphan")
     reviews = relationship("Review", back_populates="user")
     visits = relationship("Visit", back_populates="user")
