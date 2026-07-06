@@ -22,6 +22,7 @@ from app.routes import (
     admin_training_routes,
     auth_routes,
     favorite_routes,
+    archive_routes,
     destination_media_routes,
     admin_metrics_routes,
     admin_announcement_routes,
@@ -89,6 +90,7 @@ def create_app() -> FastAPI:
     app.include_router(review_routes.router, prefix=api_prefix)
     app.include_router(admin_training_routes.router, prefix=api_prefix)
     app.include_router(favorite_routes.router, prefix=api_prefix)
+    app.include_router(archive_routes.router, prefix=api_prefix)
     app.include_router(destination_media_routes.router, prefix=api_prefix)
     app.include_router(admin_metrics_routes.router, prefix=api_prefix)
     app.include_router(admin_announcement_routes.router, prefix=api_prefix)
