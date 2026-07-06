@@ -1,7 +1,7 @@
 """
 PROXVEL Backend - FastAPI Application.
 Punto de entrada principal de la aplicación.
-Registra routers, configura CORS y carga CSV al startup.
+Registra routers, configura CORS. Fuente de datos: PostgreSQL.
 """
 
 import logging

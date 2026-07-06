@@ -2,7 +2,6 @@ fastapi
 uvicorn[standard]
 pydantic
 pydantic-settings
-pandas
 python-dotenv
 httpx
 pytest

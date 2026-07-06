@@ -36,3 +36,11 @@ Thumbs.db
 cocoasas
 cocoasas/
 
+# SQL dumps and backups — deben vivir fuera del repo
+*.sql
+backups/
+
+# CSV/JSON data files — PostgreSQL es la fuente de verdad
+app/data/*.csv
+app/data/*.json
+app/data/backups/
