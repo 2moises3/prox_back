@@ -30,6 +30,13 @@ def login(request: LoginRequest):
             detail="Credenciales inválidas"
         )
     
+    # Verificar si el usuario está activo
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cuenta desactivada. Contacta al administrador."
+        )
+    
     # Usuario válido, crear payload
     user_response = UserResponse.model_validate(user)
     token_payload = {

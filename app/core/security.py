@@ -55,6 +55,12 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserResponse:
     if user is None:
         raise credentials_exception
         
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cuenta desactivada. Contacta al administrador."
+        )
+        
     return user
 
 async def require_authenticated_user(current_user: UserResponse = Depends(get_current_user)) -> UserResponse:
