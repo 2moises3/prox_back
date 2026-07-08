@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     HOST: str = "0.0.0.0"
     PORT: int = 8000
+    ACCOUNT_DELETION_GRACE_DAYS: int = 14
 
 
     # CORS - orígenes permitidos (separados por coma en .env)

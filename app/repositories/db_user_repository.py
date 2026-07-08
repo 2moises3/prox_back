@@ -118,8 +118,7 @@ def update_user(user_id: str, update_data: dict) -> Optional[User]:
             if not user:
                 return None
             for key, value in update_data.items():
-                if value is not None:
-                    setattr(user, key, value)
+                setattr(user, key, value)
             db.commit()
             db.refresh(user)
             return user

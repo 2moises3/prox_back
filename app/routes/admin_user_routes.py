@@ -9,6 +9,7 @@ Gestión administrativa de usuarios.
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
+from pydantic import BaseModel
 from app.core.security import require_admin_or_super_admin, require_super_admin
 from app.schemas.user_schema import UserResponse, AdminRoleUpdate, AdminStatusUpdate, AdminUserCreate
 from app.services import user_admin_service
@@ -83,6 +84,45 @@ def change_status(
         raise _map_error(error)
     estado = "activado" if payload.is_active else "desactivado"
     return success_response(data=updated.model_dump(), message=f"Usuario {estado} correctamente")
+
+
+class ScheduleDeletionRequest(BaseModel):
+    reason: str
+
+
+@router.post("/{user_id}/schedule-deletion", summary="Programar eliminación de un usuario (solo super_admin)")
+def schedule_deletion(
+    user_id: str,
+    payload: ScheduleDeletionRequest,
+    current_user: UserResponse = Depends(require_super_admin),
+):
+    result, error, status_code = user_admin_service.schedule_deletion(
+        user_id, payload.reason, current_user.user_id
+    )
+    if error:
+        raise HTTPException(status_code=status_code or 400, detail=error)
+    return success_response(data=result.model_dump(), message="Eliminación programada correctamente")
+
+
+@router.post("/{user_id}/cancel-deletion", summary="Cancelar eliminación programada (solo super_admin)")
+def cancel_deletion(
+    user_id: str,
+    current_user: UserResponse = Depends(require_super_admin),
+):
+    result, error, status_code = user_admin_service.cancel_deletion(user_id)
+    if error:
+        raise HTTPException(status_code=status_code or 400, detail=error)
+    return success_response(data=result.model_dump(), message="Eliminación cancelada correctamente")
+
+
+@router.post("/process-deletions", summary="Procesar eliminaciones vencidas (solo super_admin)")
+def process_deletions(
+    current_user: UserResponse = Depends(require_super_admin),
+):
+    result, error, status_code = user_admin_service.process_due_deletions()
+    if error:
+        raise HTTPException(status_code=status_code or 500, detail=error)
+    return success_response(data=result, message=f"Se procesaron {result.get('processed', 0)} eliminaciones.")
 
 
 @router.delete("/{user_id}", summary="Eliminar usuario o sus datos (solo super_admin)")

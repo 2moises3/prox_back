@@ -7,9 +7,12 @@ auto-desactivación.
 Extensión 6B: creación de usuarios desde dashboard y eliminación segura.
 """
 import logging
+from datetime import datetime, timedelta, timezone
+import hashlib
 from typing import List, Optional
 
 from app.config.database import SessionLocal
+from app.config.settings import get_settings
 from app.repositories import db_user_repository
 from app.schemas.user_schema import (
     UserResponse,
@@ -74,7 +77,19 @@ def change_user_status(
     if target.is_active == is_active:
         return UserResponse.model_validate(target), None
 
-    updated = db_user_repository.update_user(target_user_id, {"is_active": is_active})
+    # Guarda: Bloquear reactivación directa si está en pending_deletion
+    if target.account_status == "pending_deletion":
+        return None, "No se puede cambiar el estado de un usuario con eliminación programada. Cancela la eliminación primero."
+
+    if target.account_status == "deleted":
+        return None, "No se puede cambiar el estado de un usuario eliminado."
+
+    update_payload = {
+        "is_active": is_active,
+        "account_status": "active" if is_active else "disabled"
+    }
+
+    updated = db_user_repository.update_user(target_user_id, update_payload)
     if updated:
         return UserResponse.model_validate(updated), None
     return None, "Error interno al actualizar el estado"
@@ -175,6 +190,107 @@ def delete_user(
         db.rollback()
         logger.error(f"Error eliminando usuario {target_user_id} (mode={mode}): {e}")
         return None, "Error interno al procesar la eliminación.", 500
+    finally:
+        db.close()
+
+
+def schedule_deletion(
+    target_user_id: str, reason: str, acting_user_id: str
+) -> tuple[Optional[UserResponse], Optional[str], Optional[int]]:
+    target = db_user_repository.get_user_by_id(target_user_id)
+    if not target:
+        return None, "Usuario no encontrado.", 404
+
+    if target_user_id == acting_user_id:
+        return None, "No puedes programar tu propia eliminación.", 409
+
+    acting_user = db_user_repository.get_user_by_id(acting_user_id)
+    if target.role == "super_admin" and acting_user and acting_user.role != "super_admin":
+        return None, "No puedes programar la eliminación de un super_admin.", 403
+
+    settings = get_settings()
+    grace_days = getattr(settings, "ACCOUNT_DELETION_GRACE_DAYS", 14)
+    now = datetime.now(timezone.utc)
+
+    payload = {
+        "account_status": "pending_deletion",
+        "is_active": False,
+        "deletion_requested_at": now,
+        "deletion_scheduled_at": now + timedelta(days=grace_days),
+        "deletion_reason": reason,
+        "deletion_requested_by": acting_user_id
+    }
+
+    updated = db_user_repository.update_user(target_user_id, payload)
+    if updated:
+        return UserResponse.model_validate(updated), None, None
+    return None, "Error al programar eliminación.", 500
+
+
+def cancel_deletion(
+    target_user_id: str
+) -> tuple[Optional[UserResponse], Optional[str], Optional[int]]:
+    target = db_user_repository.get_user_by_id(target_user_id)
+    if not target:
+        return None, "Usuario no encontrado.", 404
+
+    if target.account_status != "pending_deletion":
+        return None, "El usuario no está programado para eliminación.", 400
+
+    payload = {
+        "account_status": "disabled",
+        "is_active": False,
+        "deletion_requested_at": None,
+        "deletion_scheduled_at": None,
+        "deletion_reason": None,
+        "deletion_requested_by": None
+    }
+
+    updated = db_user_repository.update_user(target_user_id, payload)
+    if updated:
+        return UserResponse.model_validate(updated), None, None
+    return None, "Error al cancelar eliminación.", 500
+
+
+def process_due_deletions() -> tuple[dict, Optional[str], Optional[int]]:
+    """Procesa usuarios en pending_deletion cuyo plazo ya venció."""
+    db = SessionLocal()
+    processed_count = 0
+    try:
+        from app.models.user_model import User
+        now = datetime.now(timezone.utc)
+        
+        # Omitir timezone warning in sqlite, we just use utcnow internally.
+        # Ensure we only fetch those due.
+        due_users = db.query(User).filter(
+            User.account_status == "pending_deletion",
+            User.deletion_scheduled_at <= datetime.utcnow()
+        ).all()
+
+        for u in due_users:
+            # Eliminar datos (favoritos, visitas, etc.)
+            db_user_repository.delete_user_data(db, u.user_id)
+            
+            # Ofuscar usuario
+            ts = int(now.timestamp())
+            hash_email = hashlib.sha256(f"{u.email}_{ts}".encode()).hexdigest()[:15]
+            
+            u.account_status = "deleted"
+            u.is_active = False
+            u.deleted_at = datetime.utcnow()
+            u.email = f"{hash_email}@deleted.local"
+            u.name = "Usuario eliminado"
+            u.avatar_url = None
+            u.password_hash = "no_login"
+            
+            processed_count += 1
+            
+        db.commit()
+        return {"processed": processed_count}, None, None
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error procesando eliminaciones: {e}")
+        return {}, "Error procesando eliminaciones.", 500
     finally:
         db.close()
 

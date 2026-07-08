@@ -60,6 +60,12 @@ class AdminUserResponse(BaseModel):
     is_active: bool
     avatar_url: Optional[str] = None
     created_at: datetime
+    account_status: str
+    deletion_requested_at: Optional[datetime] = None
+    deletion_scheduled_at: Optional[datetime] = None
+    deleted_at: Optional[datetime] = None
+    deletion_reason: Optional[str] = None
+    deletion_requested_by: Optional[str] = None
 
     class Config:
         from_attributes = True
