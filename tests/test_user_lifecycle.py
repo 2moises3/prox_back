@@ -317,3 +317,46 @@ def test_hard_delete_restricted(client, setup_users):
 
 # 13. suite previa de usuarios inactivos sigue pasando
 # Esto se valida corriendo tests completos, que ejecutarán test_auth_deactivated_users.py
+
+# 14. Detalle de usuario deleted no devuelve 500 y no requiere profile
+def test_user_details_for_deleted_user(client, setup_users):
+    token = get_superadmin_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    # Primero programar y procesar para tener a un eliminado
+    client.post(f"/api/v1/admin/users/{setup_users['traveler_id']}/schedule-deletion", json={"reason": "Test"}, headers=headers)
+    
+    # Mover reloj (simulado en el backend por el proceso) y procesar
+    db = SessionLocal()
+    from app.models.user_model import User
+    from datetime import datetime, timedelta, UTC
+    u = db.query(User).filter(User.user_id == setup_users["traveler_id"]).first()
+    u.deletion_scheduled_at = datetime.now(UTC) - timedelta(days=1)
+    db.commit()
+    db.close()
+    
+    client.post("/api/v1/admin/users/process-deletions", headers=headers)
+    
+    # Intentar ver detalles
+    details_res = client.get(
+        f"/api/v1/admin/users/{setup_users['traveler_id']}/details",
+        headers=headers
+    )
+    assert details_res.status_code == 200
+    details = details_res.json()["data"]
+    assert details["account_status"] == "deleted"
+    assert details["is_active"] is False
+    assert details["name"] == "Usuario eliminado"
+
+# 15. Usuario ANON_DELETED no puede login ni está activo
+def test_anon_deleted_status(client):
+    user = db_user_repository.get_user_by_id("ANON_DELETED")
+    assert user is not None
+    assert user.account_status == "deleted"
+    assert user.is_active is False
+    
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "deleted@proxvel.internal", "password": "anypassword"}
+    )
+    assert response.status_code in [401, 403]

@@ -312,8 +312,8 @@ def get_user_details_admin(user_id: str) -> tuple[Optional[dict], Optional[str],
         profile = db.query(TravelerProfile).filter(TravelerProfile.user_id == user_id).first()
 
         aspects = []
-        if profile and profile.aspects:
-            aspects = profile.aspects
+        if profile and profile.intereses:
+            aspects = profile.intereses
 
         return {
             "user_id": user.user_id,
@@ -323,6 +323,9 @@ def get_user_details_admin(user_id: str) -> tuple[Optional[dict], Optional[str],
             "is_active": user.is_active,
             "created_at": user.created_at,
             "avatar_url": user.avatar_url,
+            "account_status": user.account_status,
+            "deletion_scheduled_at": user.deletion_scheduled_at,
+            "deleted_at": user.deleted_at,
             "favorites_count": fav_count,
             "aspects": aspects
         }, None, None
