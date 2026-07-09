@@ -128,6 +128,23 @@ def update_user(user_id: str, update_data: dict) -> Optional[User]:
         logger.error(f"Error updating user: {e}")
         return None
 
+def update_password_hash(user_id: str, new_password_hash: str) -> bool:
+    """Actualiza exclusivamente el password_hash de un usuario de forma segura."""
+    try:
+        db = SessionLocal()
+        try:
+            user = db.scalar(select(User).where(User.user_id == user_id))
+            if not user:
+                return False
+            user.password_hash = new_password_hash
+            db.commit()
+            return True
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"Error updating password hash: {e}")
+        return False
+
 
 # ── Extensión 6B: Eliminación segura de usuarios ─────────────────────────────
 
