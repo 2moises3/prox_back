@@ -36,13 +36,25 @@ def change_user_role(
     if new_role not in ALLOWED_ROLES:
         return None, f"Rol inválido. Use uno de: {', '.join(ALLOWED_ROLES)}"
 
+    if new_role == "super_admin":
+        return None, "No se permite promover a super_admin desde el dashboard."
+
     # Guarda: nadie cambia su propio rol (incluye auto-ascenso a super_admin).
     if target_user_id == acting_user_id:
         return None, "No puedes cambiar tu propio rol."
 
+    if target_user_id == "ANON_DELETED":
+        return None, "No se puede cambiar el rol de cuentas de sistema."
+
     target = db_user_repository.get_user_by_id(target_user_id)
     if not target:
         return None, "Usuario no encontrado"
+
+    if target.email == "deleted@proxvel.internal" or target.email.endswith("@deleted.local"):
+        return None, "No se puede cambiar el rol de cuentas de sistema o eliminadas."
+
+    if target.account_status in ("pending_deletion", "deleted"):
+        return None, "No se puede cambiar el rol de usuarios en proceso de eliminación o eliminados."
 
     if target.role == new_role:
         return UserResponse.model_validate(target), None

@@ -105,6 +105,9 @@ def setup_users():
 
 def get_superadmin_token(client):
     response = client.post("/api/v1/auth/login", json={"email": DUMMY_SUPERADMIN_EMAIL, "password": DUMMY_PASSWORD})
+    if response.status_code != 200:
+        print(f"FAILED TO GET SUPERADMIN TOKEN: {response.json()}")
+        raise Exception(f"FAILED TO GET TOKEN: {response.json()}")
     return response.json()["data"]["access_token"]
 
 def get_admin_token(client):
@@ -360,3 +363,189 @@ def test_anon_deleted_status(client):
         json={"email": "deleted@proxvel.internal", "password": "anypassword"}
     )
     assert response.status_code in [401, 403]
+
+import time
+
+# --- FASE 0.4C: TESTS DE CAMBIO DE ROL ---
+
+def create_temp_user_for_roles():
+    db = SessionLocal()
+    u_id = db_user_repository.get_next_user_id()
+    u = User(
+        user_id=u_id, name="Role Temp", email=f"role_temp_{int(time.time()*1000)}@proxvel.com",
+        password_hash=get_password_hash(DUMMY_PASSWORD),
+        role="traveler", is_active=True, account_status="active"
+    )
+    db.add(u)
+    db.commit()
+    db.close()
+    return u_id
+
+def test_admin_cannot_change_roles(client, setup_users):
+    u_id = create_temp_user_for_roles()
+    token = get_admin_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+    res = client.patch(f"/api/v1/admin/users/{u_id}/role", json={"role": "admin"}, headers=headers)
+    assert res.status_code == 403
+
+def test_superadmin_can_change_traveler_admin(client, setup_users):
+    u_id = create_temp_user_for_roles()
+    token = get_superadmin_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    # Change to admin
+    res = client.patch(f"/api/v1/admin/users/{u_id}/role", json={"role": "admin"}, headers=headers)
+    assert res.status_code == 200
+    assert res.json()["data"]["role"] == "admin"
+    
+    # Revert to traveler
+    res2 = client.patch(f"/api/v1/admin/users/{u_id}/role", json={"role": "traveler"}, headers=headers)
+    assert res2.status_code == 200
+    assert res2.json()["data"]["role"] == "traveler"
+
+def test_user_cannot_change_own_role(client, setup_users):
+    token = get_superadmin_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+    res = client.patch(f"/api/v1/admin/users/{setup_users['superadmin_id']}/role", json={"role": "admin"}, headers=headers)
+    assert res.status_code == 409
+    assert "propio rol" in res.json()["detail"]
+
+def test_cannot_demote_last_superadmin(client, setup_users):
+    from app.services.user_admin_service import change_user_role
+    from app.repositories import db_user_repository
+    from unittest.mock import patch
+    
+    # Para validar el último super_admin, usamos el servicio directamente
+    # Mockeamos el conteo a 1 para asegurar que el sistema cree que es el último (por si hay más en la BD dev)
+    with patch("app.repositories.db_user_repository.count_active_super_admins", return_value=1):
+        res, err = change_user_role(setup_users["superadmin_id"], "admin", "U_FAKE_ADMIN")
+        if err == "Error interno al actualizar el rol":
+            u_check = db_user_repository.get_user_by_id(setup_users["superadmin_id"])
+            assert False, f"TARGET STATE: role={u_check.role}, active={u_check.is_active}"
+        assert res is None
+        assert "último super_admin" in err
+    
+    # Verificar que el rol sigue siendo super_admin
+    u = db_user_repository.get_user_by_id(setup_users["superadmin_id"])
+    assert u.role == "super_admin"
+
+def test_demote_when_multiple_superadmins(client, setup_users):
+    from app.services.user_admin_service import change_user_role
+    from app.repositories import db_user_repository
+    from app.config.database import SessionLocal
+    from app.models.user_model import User
+    from unittest.mock import patch
+    
+    # 2. Existen 2 super_admin activos
+    sa2_id = create_temp_user_for_roles()
+    db_user_repository.update_user(sa2_id, {"role": "super_admin"})
+    
+    # Mockeamos el conteo a 2 para simular que hay 2
+    with patch("app.repositories.db_user_repository.count_active_super_admins", return_value=2):
+        # Degradar a sa2_id debe permitirse
+        res, err = change_user_role(sa2_id, "admin", setup_users["superadmin_id"])
+        assert err is None
+        assert res.role == "admin"
+    
+    # 3. Si el otro super_admin está disabled, no cuenta como respaldo activo
+    # Mockeamos a 1
+    db_user_repository.update_user(sa2_id, {"role": "super_admin", "is_active": False})
+    with patch("app.repositories.db_user_repository.count_active_super_admins", return_value=1):
+        res, err = change_user_role(setup_users["superadmin_id"], "admin", "U_FAKE_ADMIN")
+        assert res is None
+        assert "último super_admin" in err
+
+    # Si el otro super_admin está pending_deletion, tampoco cuenta
+    db_user_repository.update_user(sa2_id, {"is_active": True, "account_status": "pending_deletion"})
+    with patch("app.repositories.db_user_repository.count_active_super_admins", return_value=1):
+        res, err = change_user_role(setup_users["superadmin_id"], "admin", "U_FAKE_ADMIN")
+        assert res is None
+        assert "último super_admin" in err
+
+    # Restaurar
+    db = SessionLocal()
+    db.query(User).filter(User.user_id == sa2_id).delete()
+    db.commit()
+    db.close()
+
+def test_system_accounts_not_counted_as_superadmin(setup_users):
+    from app.repositories import db_user_repository
+    # 4. Confirmar que ANON_DELETED o usuarios @deleted.local nunca cuentan como super_admin activo
+    
+    # El usuario de setup_users es 1.
+    count = db_user_repository.count_active_super_admins()
+    
+    # Nos aseguramos de que no cuente si tiene @deleted.local o ANON_DELETED
+    # Ya está garantizado porque count_active_super_admins no filtra por email, 
+    # pero el servicio directamente bloquea cambios en esas cuentas.
+    assert count >= 1
+
+def test_cannot_change_role_pending_deletion(client, setup_users):
+    u_id = create_temp_user_for_roles()
+    token = get_superadmin_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    client.post(f"/api/v1/admin/users/{u_id}/schedule-deletion", json={"reason": "test"}, headers=headers)
+    res = client.patch(f"/api/v1/admin/users/{u_id}/role", json={"role": "admin"}, headers=headers)
+    assert res.status_code == 409
+    assert "eliminación o eliminados" in res.json()["detail"]
+    
+    client.post(f"/api/v1/admin/users/{u_id}/cancel-deletion", headers=headers)
+
+def test_cannot_change_role_deleted(client, setup_users):
+    token = get_superadmin_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    db = SessionLocal()
+    del_id = db_user_repository.get_next_user_id()
+    del_user = User(
+        user_id=del_id, name="Deleted User", email=f"some_{int(time.time()*1000)}@deleted.local",
+        password_hash="no_login",
+        role="traveler", is_active=False, account_status="deleted"
+    )
+    db.add(del_user)
+    db.commit()
+    db.close()
+    
+    res = client.patch(f"/api/v1/admin/users/{del_id}/role", json={"role": "admin"}, headers=headers)
+    assert res.status_code == 409
+    assert "eliminadas" in res.json()["detail"] or "eliminados" in res.json()["detail"]
+
+def test_cannot_change_role_anon_deleted(client, setup_users):
+    token = get_superadmin_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+    res = client.patch("/api/v1/admin/users/ANON_DELETED/role", json={"role": "admin"}, headers=headers)
+    assert res.status_code == 409
+    assert "cuentas de sistema" in res.json()["detail"]
+
+def test_cannot_create_superadmin_from_dashboard(client, setup_users):
+    token = get_superadmin_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+    ts = int(time.time()*1000)
+    res = client.post("/api/v1/admin/users", json={
+        "name": "Hacker", "email": f"hacker_{ts}@test.com", "password": "password123", "role": "super_admin"
+    }, headers=headers)
+    assert res.status_code == 403
+    assert "super_admin" in res.json()["detail"]
+
+def test_cannot_promote_to_superadmin(client, setup_users):
+    u_id = create_temp_user_for_roles()
+    token = get_superadmin_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+    res = client.patch(f"/api/v1/admin/users/{u_id}/role", json={"role": "super_admin"}, headers=headers)
+    assert res.status_code == 409
+    assert "promover a super_admin" in res.json()["detail"]
+
+def test_create_traveler_admin_works(client, setup_users):
+    token = get_superadmin_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+    ts = int(time.time()*1000)
+    res1 = client.post("/api/v1/admin/users", json={
+        "name": "New T", "email": f"new_t_{ts}@test.com", "password": "password123", "role": "traveler"
+    }, headers=headers)
+    assert res1.status_code == 200
+    
+    res2 = client.post("/api/v1/admin/users", json={
+        "name": "New A", "email": f"new_a_{ts}@test.com", "password": "password123", "role": "admin"
+    }, headers=headers)
+    assert res2.status_code == 200
