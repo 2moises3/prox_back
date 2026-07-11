@@ -57,6 +57,8 @@ def get_all_destinations(city: str | None = None, limit: int = 50, include_inact
                     "official_source_name": None,
                     "is_active": dest.is_active,
                     "data_status": None,
+                    "latitude": None,
+                    "longitude": None,
                 }
                 enrichment = db_tourism_repository.get_enrichment_data(dest.destination_id, db=db)
                 if enrichment:
@@ -68,6 +70,8 @@ def get_all_destinations(city: str | None = None, limit: int = 50, include_inact
                         "subtype": enrichment.get("subtype"),
                         "official_source_name": enrichment.get("official_source_name"),
                         "data_status": enrichment.get("data_status"),
+                        "latitude": enrichment.get("latitude"),
+                        "longitude": enrichment.get("longitude"),
                     })
                 destinations.append(item)
             

@@ -66,6 +66,8 @@ class DestinationSummary(BaseModel):
     official_source_name: str | None = None
     is_active: bool = True
     data_status: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 class DestinationDetail(DestinationSummary):
