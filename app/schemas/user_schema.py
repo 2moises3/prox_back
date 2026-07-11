@@ -9,6 +9,9 @@ from typing import Optional
 class UserBase(BaseModel):
     name: Optional[str] = None
     email: str
+    residence_department: Optional[str] = Field(None, max_length=120)
+    residence_province: Optional[str] = Field(None, max_length=120)
+    residence_city: Optional[str] = Field(None, max_length=120)
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=6)
@@ -18,6 +21,9 @@ class UserUpdate(BaseModel):
     email: Optional[str] = None
     password: Optional[str] = Field(None, min_length=6)
     avatar_url: Optional[str] = None
+    residence_department: Optional[str] = Field(None, max_length=120)
+    residence_province: Optional[str] = Field(None, max_length=120)
+    residence_city: Optional[str] = Field(None, max_length=120)
 
 class UserResponse(UserBase):
     user_id: str
@@ -59,6 +65,9 @@ class AdminUserResponse(BaseModel):
     role: str
     is_active: bool
     avatar_url: Optional[str] = None
+    residence_department: Optional[str] = None
+    residence_province: Optional[str] = None
+    residence_city: Optional[str] = None
     created_at: datetime
     account_status: str
     deletion_requested_at: Optional[datetime] = None

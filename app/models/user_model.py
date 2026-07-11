@@ -22,6 +22,11 @@ class User(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     avatar_url: Mapped[str | None] = mapped_column(String)
 
+    # Ubicación base del usuario (Residencia)
+    residence_department: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    residence_province: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    residence_city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+
     # Ciclo de vida (Fase 0.3)
     account_status: Mapped[str] = mapped_column(String, default="active")
     deletion_requested_at: Mapped[datetime | None] = mapped_column(DateTime)
