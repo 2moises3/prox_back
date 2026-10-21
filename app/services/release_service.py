@@ -21,8 +21,14 @@ def create_release(data: dict[str, Any]) -> tuple[Optional[ReleaseResponse], Opt
     platform = (data.get("platform") or "android").lower()
     if platform not in PLATFORMS:
         return None, f"Plataforma inválida. Use una de: {', '.join(PLATFORMS)}"
-    if not data.get("apk_url"):
+    apk_url = (data.get("apk_url") or "").strip()
+    if not apk_url:
         return None, "Se requiere un archivo APK o una apk_url."
+    if not apk_url.startswith("https://"):
+        return None, "La apk_url debe ser un enlace https://"
+    if any(r.version_code == data.get("version_code") and r.platform == platform for r in repo.get_all()):
+        return None, f"Ya existe una versión con el código {data.get('version_code')} para {platform}."
+    data["apk_url"] = apk_url
     data["platform"] = platform
     r = repo.create(data)
     return ReleaseResponse.model_validate(r), None

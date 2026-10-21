@@ -14,6 +14,34 @@ def client():
     with TestClient(app) as c:
         yield c
 
+
+@pytest.fixture(scope="module", autouse=True)
+def limpiar_usuarios_creados():
+    """La suite corre contra la BD local real: al terminar se borra todo usuario que este
+    módulo haya creado (temporales, re-registros, anonimizados), con sus filas dependientes.
+    Las cuentas que ya existían (y la cuenta de sistema ANON_DELETED) no se tocan."""
+    from sqlalchemy import text
+
+    db = SessionLocal()
+    antes = {uid for (uid,) in db.query(User.user_id).all()}
+    db.close()
+    yield
+    db = SessionLocal()
+    try:
+        nuevos = [uid for (uid,) in db.query(User.user_id).all()
+                  if uid not in antes and uid != "ANON_DELETED"]
+        if nuevos:
+            tablas = [t for (t,) in db.execute(text(
+                "select table_name from information_schema.columns "
+                "where column_name = 'user_id' and table_schema = 'public' and table_name <> 'users'"
+            ))]
+            for tabla in tablas:
+                db.execute(text(f'delete from "{tabla}" where user_id = any(:ids)'), {"ids": nuevos})
+            db.execute(text("delete from users where user_id = any(:ids)"), {"ids": nuevos})
+            db.commit()
+    finally:
+        db.close()
+
 # Usuarios de prueba
 DUMMY_TRAVELER_EMAIL = "traveler.lifecycle@proxvel.com"
 DUMMY_ADMIN_EMAIL = "admin.lifecycle@proxvel.com"
@@ -254,7 +282,8 @@ def test_process_deletions_and_reregister(client, setup_users):
     register_response = client.post("/api/v1/users", json={
         "name": "New Traveler",
         "email": DUMMY_TRAVELER_EMAIL,
-        "password": "newpassword123"
+        "password": "newpassword123",
+        "accepted_terms": True,
     })
     assert register_response.status_code == 201
 

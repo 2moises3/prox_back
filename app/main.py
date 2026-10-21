@@ -4,12 +4,16 @@ Punto de entrada principal de la aplicación.
 Registra routers, configura CORS. Fuente de datos: PostgreSQL.
 """
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 from app.config.cors import configure_cors
+from app.core.audit import install_audit_handler, purge_audit
 from app.config.settings import get_settings
 from app.routes import (
     data_routes,
@@ -32,6 +36,8 @@ from app.routes import (
     admin_release_routes,
     release_public_routes,
     admin_import_routes,
+    admin_engine_routes,
+    notification_routes,
 )
 
 # Configurar logging
@@ -51,9 +57,33 @@ async def lifespan(app: FastAPI):
     """
     settings = get_settings()
     logger.info("Iniciando %s v%s", settings.APP_NAME, settings.APP_VERSION)
+    install_audit_handler()
+    job = asyncio.create_task(_daily_jobs(settings)) if settings.ENABLE_BACKGROUND_JOBS else None
     logger.info("Backend listo (fuente de datos: PostgreSQL).")
     yield
+    if job:
+        job.cancel()
     logger.info("Backend detenido.")
+
+
+async def _daily_jobs(settings) -> None:
+    """Cada 24 h: ejecuta las eliminaciones de cuenta vencidas y borra auditoría antigua."""
+    from app.services.user_admin_service import process_due_deletions
+
+    await asyncio.sleep(300)  # deja arrancar y estabilizar el servicio
+    while True:
+        try:
+            result, error, _ = await asyncio.to_thread(process_due_deletions)
+            if not error and result.get("processed"):
+                logger.info("Eliminaciones de cuenta procesadas: %s", result["processed"])
+            purged = await asyncio.to_thread(purge_audit, settings.AUDIT_RETENTION_DAYS)
+            if purged:
+                logger.info("Auditoría: %s eventos antiguos borrados", purged)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # una falla no debe detener las siguientes ejecuciones
+            logger.error("Tarea diaria falló: %s", exc)
+        await asyncio.sleep(24 * 3600)
 
 
 def create_app() -> FastAPI:
@@ -71,12 +101,46 @@ def create_app() -> FastAPI:
             "oficial complementario (MINCETUR)."
         ),
         lifespan=lifespan,
-        docs_url="/docs",
-        redoc_url="/redoc",
+        # Swagger solo en desarrollo (o con ENABLE_DOCS=true): no se expone la API en producción.
+        docs_url="/docs" if settings.docs_enabled else None,
+        redoc_url="/redoc" if settings.docs_enabled else None,
+        openapi_url="/openapi.json" if settings.docs_enabled else None,
     )
 
     # Configurar CORS
     configure_cors(app)
+
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next):
+        response = await call_next(request)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+        if settings.is_production:
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        return response
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error_handler(request: Request, exc: RequestValidationError):
+        """
+        Los clientes (app y dashboard) muestran `detail` como texto: se devuelve un mensaje
+        legible en vez de la lista técnica de Pydantic (que además revela el esquema interno).
+        """
+        errors = exc.errors()
+        first = errors[0] if errors else {}
+        field = str(first.get("loc", ("",))[-1]) if first.get("loc") else ""
+        kind = first.get("type", "")
+        if field in ("password", "new_password") and kind == "string_too_short":
+            message = "La contraseña debe tener al menos 8 caracteres."
+        elif field == "code":
+            message = "El código debe tener 6 dígitos."
+        elif kind == "missing":
+            message = f"Falta el campo obligatorio: {field}."
+        elif field == "email" or "email" in kind:
+            message = "Ingresa un correo electrónico válido."
+        else:
+            message = "Revisa los datos enviados e intenta nuevamente."
+        return JSONResponse(status_code=422, content={"detail": message})
 
     # Registrar routers bajo /api/v1
     api_prefix = "/api/v1"
@@ -99,6 +163,8 @@ def create_app() -> FastAPI:
     app.include_router(admin_user_routes.router, prefix=api_prefix)
     app.include_router(admin_release_routes.router, prefix=api_prefix)
     app.include_router(admin_import_routes.router, prefix=api_prefix)
+    app.include_router(admin_engine_routes.router, prefix=api_prefix)
+    app.include_router(notification_routes.router, prefix=api_prefix)
     app.include_router(release_public_routes.router, prefix=api_prefix)
 
     return app

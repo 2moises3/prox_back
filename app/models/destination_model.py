@@ -22,6 +22,12 @@ class Destination(Base, TimestampMixin):
     )
 
     # Relaciones
+    # Participa en el motor de recomendación. Independiente de is_active:
+    # un destino puede ser visible (detalle, mapa, búsqueda) sin ser recomendado.
+    in_engine: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false"), nullable=False
+    )
+
     tourism_catalog = relationship("TourismCatalog", back_populates="destination", uselist=False)
     aspect_scores = relationship("DestinationAspectScore", back_populates="destination", uselist=False)
     climate_scores = relationship("ClimateScore", back_populates="destination")

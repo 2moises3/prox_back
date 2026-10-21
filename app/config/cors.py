@@ -33,9 +33,28 @@ def configure_cors(app: FastAPI) -> None:
     else:
         # Lista explícita de orígenes: seguro con credenciales.
         allow_origins = [o.strip() for o in origins.split(",") if o.strip()]
+
+        # En desarrollo, admitir orígenes locales habituales (4000, 5173, 3000) y regex para Flutter Web
+        if settings.DEBUG:
+            for dev_origin in (
+                "http://localhost:4000",
+                "http://127.0.0.1:4000",
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://localhost:3000",
+                "http://127.0.0.1:3000",
+            ):
+                if dev_origin not in allow_origins:
+                    allow_origins.append(dev_origin)
+
+        allow_origin_regex = (
+            r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$" if settings.DEBUG else None
+        )
+
         app.add_middleware(
             CORSMiddleware,
             allow_origins=allow_origins,
+            allow_origin_regex=allow_origin_regex,
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],

@@ -239,6 +239,31 @@ def schedule_deletion(
     return None, "Error al programar eliminación.", 500
 
 
+def request_own_deletion(user_id: str) -> tuple[Optional[UserResponse], Optional[str], Optional[int]]:
+    """El propio viajero pide eliminar su cuenta: acceso bloqueado ya y borrado tras la gracia."""
+    target = db_user_repository.get_user_by_id(user_id)
+    if not target:
+        return None, "Usuario no encontrado.", 404
+    if target.role != "traveler":
+        return None, "Las cuentas del equipo se gestionan desde el dashboard.", 403
+    if target.account_status in ("pending_deletion", "deleted"):
+        return None, "Tu cuenta ya está en proceso de eliminación.", 409
+
+    grace_days = getattr(get_settings(), "ACCOUNT_DELETION_GRACE_DAYS", 14)
+    now = datetime.now(timezone.utc)
+    updated = db_user_repository.update_user(user_id, {
+        "account_status": "pending_deletion",
+        "is_active": False,
+        "deletion_requested_at": now,
+        "deletion_scheduled_at": now + timedelta(days=grace_days),
+        "deletion_reason": "Solicitud del propio usuario",
+        "deletion_requested_by": user_id,
+    })
+    if updated:
+        return UserResponse.model_validate(updated), None, None
+    return None, "Error al programar la eliminación.", 500
+
+
 def cancel_deletion(
     target_user_id: str
 ) -> tuple[Optional[UserResponse], Optional[str], Optional[int]]:
@@ -287,6 +312,17 @@ def process_due_deletions() -> tuple[dict, Optional[str], Optional[int]]:
             ts = int(now.timestamp())
             hash_email = hashlib.sha256(f"{u.email}_{ts}".encode()).hexdigest()[:15]
             
+            # Foto de perfil en Cloudinary (si falla, queda registrado; no bloquea la eliminación)
+            try:
+                from app.services import cloudinary_service
+                cloudinary_service.delete_image_by_url(u.avatar_url)
+            except Exception as exc:  # pragma: no cover
+                logger.warning("No se pudo borrar el avatar de %s: %s", u.user_id, exc)
+            u.residence_department = None
+            u.residence_province = None
+            u.residence_city = None
+            u.accepted_terms_version = None
+            u.accepted_terms_at = None
             u.account_status = "deleted"
             u.is_active = False
             u.deleted_at = datetime.utcnow()
@@ -346,3 +382,86 @@ def get_user_details_admin(user_id: str) -> tuple[Optional[dict], Optional[str],
         return None, "Error interno al obtener detalles.", 500
     finally:
         db.close()
+
+
+# ── Restablecimiento de contraseña por un super_admin ────────────────────────
+
+audit_logger = logging.getLogger("proxvel.audit")
+
+# Sin caracteres ambiguos (0/O, 1/l/I) para que se pueda dictar o copiar sin errores.
+_TEMP_PASSWORD_ALPHABET = {
+    "upper": "ABCDEFGHJKLMNPQRSTUVWXYZ",
+    "lower": "abcdefghijkmnopqrstuvwxyz",
+    "digit": "23456789",
+}
+_TEMP_PASSWORD_LENGTH = 12
+
+
+def generate_temporary_password() -> str:
+    """12 caracteres con mayúsculas, minúsculas y dígitos, generados con `secrets`."""
+    import secrets
+
+    groups = list(_TEMP_PASSWORD_ALPHABET.values())
+    chars = [secrets.choice(g) for g in groups]  # al menos uno de cada tipo
+    pool = "".join(groups)
+    chars += [secrets.choice(pool) for _ in range(_TEMP_PASSWORD_LENGTH - len(chars))]
+    secrets.SystemRandom().shuffle(chars)
+    return "".join(chars)
+
+
+def reset_user_password(
+    target_user_id: str, acting_user_id: str, client_ip: str = "unknown"
+) -> tuple[Optional[dict], Optional[str], Optional[int]]:
+    """
+    Restablece la contraseña de un usuario con una temporal que se devuelve UNA sola vez.
+    Cierra todas las sesiones abiertas del usuario (password_changed_at).
+    Retorna (resultado, error, http_status). Todo intento queda en el log de auditoría;
+    la contraseña nunca se escribe en el log.
+    """
+    def denied(reason: str, status_code: int):
+        audit_logger.warning(
+            "AUDIT password_reset DENIED actor=%s target=%s ip=%s reason=%s",
+            acting_user_id, target_user_id, client_ip, reason,
+        )
+        return None, reason, status_code
+
+    if target_user_id == acting_user_id:
+        return denied("No puedes restablecer tu propia contraseña desde aquí.", 400)
+    if target_user_id == "ANON_DELETED":
+        return denied("No se puede restablecer la contraseña de cuentas de sistema.", 400)
+
+    target = db_user_repository.get_user_by_id(target_user_id)
+    if not target:
+        return denied("Usuario no encontrado", 404)
+    if target.email == "deleted@proxvel.internal" or target.email.endswith("@deleted.local"):
+        return denied("No se puede restablecer la contraseña de cuentas de sistema o eliminadas.", 400)
+    if target.account_status in ("pending_deletion", "deleted"):
+        return denied("No se puede restablecer la contraseña de un usuario en proceso de eliminación o eliminado.", 400)
+
+    temporary = generate_temporary_password()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)  # UTC naive, como el resto de columnas
+    updated = db_user_repository.update_user(
+        target_user_id,
+        {"password_hash": get_password_hash(temporary), "password_changed_at": now},
+    )
+    if not updated:
+        return denied("Error interno al restablecer la contraseña", 500)
+
+    audit_logger.info(
+        "AUDIT password_reset OK actor=%s target=%s target_role=%s ip=%s sessions_invalidated=true",
+        acting_user_id, target_user_id, target.role, client_ip,
+    )
+    from app.services import notification_service
+    notification_service.notify_user(
+        target.user_id, "seguridad", "Restablecieron tu contraseña",
+        "Un administrador de PROXVEL restableció tu contraseña. Cámbiala por una tuya en Perfil → Cambiar contraseña.",
+        route="/profile/change-password",
+        dedupe_key=f"seguridad:reset:{now.isoformat()}",
+    )
+    return {
+        "user_id": target.user_id,
+        "name": target.name,
+        "email": target.email,
+        "temporary_password": temporary,
+        "sessions_invalidated": True,
+    }, None, None

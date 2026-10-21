@@ -5,7 +5,7 @@ Endpoints de ranking contextual, búsqueda y recomendaciones base.
 
 from fastapi import APIRouter, Query, Depends, HTTPException
 
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_admin_or_super_admin
 from app.schemas.user_schema import UserResponse
 from app.schemas.recommendation_schema import RecommendationMeResponse
 from app.services import (
@@ -86,8 +86,9 @@ def contextual_ranking(
         None, description="Filtrar por ciudad (preparado para futuro)"
     ),
     limit: int = Query(10, ge=1, le=100, description="Límite de resultados"),
+    _: UserResponse = Depends(require_admin_or_super_admin),
 ):
-    """Obtiene ranking contextual con filtros opcionales."""
+    """Obtiene ranking contextual con filtros opcionales (solo administradores)."""
     results = contextual_ranking_service.get_contextual_ranking(
         user_id=user_id, city=city, limit=limit,
     )
@@ -113,8 +114,9 @@ def search_recommendations(
         None, description="Filtrar por ciudad (preparado para futuro)"
     ),
     limit: int = Query(10, ge=1, le=100, description="Límite de resultados"),
+    _: UserResponse = Depends(require_admin_or_super_admin),
 ):
-    """Busca destinos por texto o ciudad."""
+    """Busca destinos por texto o ciudad (solo administradores)."""
     results = recommendation_service.search(
         query=query, city=city, limit=limit,
     )
@@ -133,7 +135,7 @@ def search_recommendations(
         "Los datos de score_fase3 están disponibles vía /contextual."
     ),
 )
-def base_recommendations():
+def base_recommendations(_: UserResponse = Depends(require_admin_or_super_admin)):
     """
     Devuelve información sobre disponibilidad de recomendaciones base.
     Este endpoint queda como stub documentado hasta que se integre

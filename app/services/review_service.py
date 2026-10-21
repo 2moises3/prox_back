@@ -46,8 +46,8 @@ def get_review_by_id(review_id: str) -> Optional[ReviewResponse]:
         return ReviewResponse.model_validate(review)
     return None
 
-def get_reviews_by_destination(destination_id: str) -> List[ReviewResponse]:
-    reviews = db_review_repository.get_reviews_by_destination(destination_id)
+def get_reviews_by_destination(destination_id: str, include_hidden: bool = False) -> List[ReviewResponse]:
+    reviews = db_review_repository.get_reviews_by_destination(destination_id, include_hidden=include_hidden)
     return [ReviewResponse.model_validate(r) for r in reviews]
 
 def get_reviews_by_user(user_id: str) -> List[ReviewResponse]:

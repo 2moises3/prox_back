@@ -1,15 +1,16 @@
-fastapi
-uvicorn[standard]
-pydantic
-pydantic-settings
-python-dotenv
-httpx
-pytest
-sqlalchemy
-psycopg2-binary
-alembic
-python-jose[cryptography]
-email-validator
+fastapi==0.141.1
+uvicorn[standard]==0.52.1
+pydantic==2.13.4
+pydantic-settings==2.15.0
+python-dotenv==1.2.2
+httpx==0.28.1
+pytest==9.1.1
+sqlalchemy==2.0.52
+psycopg2-binary==2.9.12
+psycopg[binary]==3.3.6
+alembic==1.19.1
+python-jose[cryptography]==3.5.0
+email-validator==2.3.0
 
 # Cloudinary integration for multimedia
 cloudinary==1.41.0
@@ -18,3 +19,6 @@ python-multipart==0.0.9
 # Auth & Hashing
 passlib[bcrypt]==1.7.4
 bcrypt==3.2.2
+
+# Lectura de Excel (.xlsx) en los importadores del dashboard
+openpyxl==3.1.5

@@ -15,8 +15,12 @@ class EngineConfig(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
 
+    # Peso del componente ABSA en la afinidad (tesis Fase 3: 0.25; el resto va a intereses).
+    alpha_absa: Mapped[float] = mapped_column(Float, default=0.25, server_default="0.25")
+    # DEPRECADOS (fórmula previa al alineamiento con la tesis). No los usa el motor.
     alpha_afinidad: Mapped[float] = mapped_column(Float, default=0.85)
     beta_intereses: Mapped[float] = mapped_column(Float, default=0.15)
+    # Peso del contexto en el score final: afinidad + beta_contexto * (C - 0.5).
     beta_contexto: Mapped[float] = mapped_column(Float, default=0.30)
     w_clima: Mapped[float] = mapped_column(Float, default=0.5)
     w_aforo: Mapped[float] = mapped_column(Float, default=0.5)

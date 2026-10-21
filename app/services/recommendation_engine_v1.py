@@ -1,16 +1,34 @@
 """
-PROXVEL Backend - Motor de Recomendación V1 (Fase 3+4).
+PROXVEL Backend - Motor de Recomendación (alineado con la tesis, Fases 3 y 4).
 Lee 100% desde PostgreSQL. Sin pandas, sin JSON, sin CSV.
 
-Fuentes de datos (BD):
-  - engine_config                  → parámetros del modelo
-  - destinations (is_active=True)  → universo de recomendación
-  - destination_aspect_scores      → ABSA por destino
-  - destination_tags               → tags de interés
-  - destination_month_context      → clima/aforo del mes actual
-  - tourism_catalog                → metadatos (cover, city, region)
+Modelo (réplica de los notebooks de la tesis):
+
+  Fase 3 - afinidad (por viajero, normalizada min-max sobre los destinos del motor)
+      S_int  = |intereses del viajero ∩ tags del destino| / |intereses del viajero|
+      S_absa = Σ peso_a · ABSA_a      (a ∈ limpieza, atencion_servicio, atractivos)
+      afinidad = (1 - alpha_absa) · norm(S_int) + alpha_absa · norm(S_absa)      alpha_absa = 0.25
+
+  Fase 4 - re-ranking contextual (por mes)
+      C = w_clima · clima[preferencia] + w_aforo · aforo[tolerancia]             0.5 / 0.5
+      score = afinidad + beta_contexto · (C - 0.5)                               beta = 0.30
+
+  Etiqueta (Fase 3, NB02): se decide con la cobertura de intereses y la calidad
+  absolutas (no con el score mezclado, que se normaliza por perfil).
+
+Universo: destinos con is_active = True Y in_engine = True Y los 3 puntajes de
+calidad cargados. Un destino puede ser visible en la app sin entrar al motor.
+
+Presupuesto y días de viaje NO intervienen (la tesis los descarta: no hay tarifas
+ni duraciones oficiales por destino con que compararlos).
+
+Fuentes (BD):
+  engine_config, destinations, destination_aspect_scores, destination_tags,
+  destination_month_context (clima_por_preferencia / aforo_por_tolerancia),
+  tourism_catalog.
 """
 import logging
+import unicodedata
 from datetime import datetime
 
 from sqlalchemy import select
@@ -26,80 +44,48 @@ from app.models.engine_config_model import EngineConfig
 
 logger = logging.getLogger(__name__)
 
-# Aspectos "core" del WSM (los que el modelo pondera). Mismo set que destinos.json.
-_CORE = [
-    "atractivos", "costos", "seguridad", "accesibilidad", "limpieza",
-    "atencion_servicio", "gastronomia", "alojamiento",
-]
-_NEUTRAL = 0.5
-
-# Defaults si engine_config aún no está sembrado.
-_DEFAULTS = {
-    "alpha_afinidad": 0.85, "beta_intereses": 0.15, "beta_contexto": 0.30,
-    "w_clima": 0.5, "w_aforo": 0.5,
-    "factor_tolerancia": {"baja": 1.0, "media": 0.65, "alta": 0.35},
+# Aspectos de calidad del modelo (los únicos con precisión de detección >= 0.70).
+_QUALITY = ["limpieza", "atencion_servicio", "atractivos"]
+_ASPECT_LABEL = {
+    "limpieza": "la limpieza",
+    "atencion_servicio": "la atención al visitante",
+    "atractivos": "los atractivos",
 }
 
+# Vocabulario de intereses de la tesis (debe coincidir con los tags de los destinos).
+INTEREST_VOCAB = {
+    "academico", "aventura", "cultura", "familiar", "fotografia", "gastronomia",
+    "historia", "montanismo", "naturaleza", "playa", "relax", "rural", "urbano",
+}
 
-def _clip(x: float) -> float:
-    return max(0.0, min(1.0, float(x)))
+# Pesos de calidad por tipo de viajero (tesis, distribuciones_referencia.json).
+_PESOS_POR_PERFIL = {
+    "cultural":            {"limpieza": 0.35, "atencion_servicio": 0.45, "atractivos": 0.20},
+    "naturalista":         {"limpieza": 0.50, "atencion_servicio": 0.30, "atractivos": 0.20},
+    "familiar":            {"limpieza": 0.45, "atencion_servicio": 0.40, "atractivos": 0.15},
+    "economico_mochilero": {"limpieza": 0.40, "atencion_servicio": 0.35, "atractivos": 0.25},
+    "gastronomico":        {"limpieza": 0.40, "atencion_servicio": 0.45, "atractivos": 0.15},
+    "aventurero":          {"limpieza": 0.35, "atencion_servicio": 0.30, "atractivos": 0.35},
+    "urbano_recreativo":   {"limpieza": 0.45, "atencion_servicio": 0.40, "atractivos": 0.15},
+}
+# La app no guarda "perfil_turistico": se infiere del interés dominante.
+_INTEREST_TO_TYPE = {
+    "cultura": "cultural", "historia": "cultural", "academico": "cultural", "fotografia": "cultural",
+    "naturaleza": "naturalista", "rural": "naturalista", "montanismo": "naturalista", "playa": "naturalista",
+    "familiar": "familiar", "gastronomia": "gastronomico", "aventura": "aventurero",
+    "urbano": "urbano_recreativo", "relax": "urbano_recreativo",
+}
 
+_CLIMATE_PREFS = {"frio", "templado", "calido", "seco", "indiferente"}
+_NEUTRAL = 0.5
 
-def _norm(t: str) -> str:
-    t = str(t).strip().lower()
-    for a, b in [("á", "a"), ("é", "e"), ("í", "i"), ("ó", "o"), ("ú", "u")]:
-        t = t.replace(a, b)
-    return t
+# Defaults si engine_config aún no está sembrado (valores de la tesis).
+_DEFAULTS = {"alpha_absa": 0.25, "beta_contexto": 0.30, "w_clima": 0.5, "w_aforo": 0.5}
 
-
-def _load_config(db: Session) -> dict:
-    cfg = db.query(EngineConfig).first()
-    if not cfg:
-        return _DEFAULTS
-    return {
-        "alpha_afinidad": cfg.alpha_afinidad,
-        "beta_intereses": cfg.beta_intereses,
-        "beta_contexto": cfg.beta_contexto,
-        "w_clima": cfg.w_clima,
-        "w_aforo": cfg.w_aforo,
-        "factor_tolerancia": {
-            "baja": cfg.factor_tolerancia_baja,
-            "media": cfg.factor_tolerancia_media,
-            "alta": cfg.factor_tolerancia_alta,
-        },
-    }
-
-
-def _pesos_desde_perfil(profile: dict) -> dict:
-    intereses   = {_norm(i) for i in (profile.get("intereses") or [])}
-    presupuesto = _norm(profile.get("presupuesto") or "medio")
-    dias        = int(profile.get("dias_viaje") or 3)
-
-    w = {
-        "atractivos":      0.18 + 0.06 * ("cultura" in intereses) + 0.05 * ("naturaleza" in intereses)
-                               + 0.03 * ("fotografia" in intereses) + 0.03 * ("aventura" in intereses),
-        "costos":          {"bajo": 0.22, "medio": 0.12, "alto": 0.06}.get(presupuesto, 0.12),
-        "seguridad":       0.12,
-        "accesibilidad":   0.10 + 0.06 * (dias <= 2),
-        "limpieza":        0.10,
-        "atencion_servicio": 0.10,
-        "gastronomia":     0.08 + 0.10 * ("gastronomia" in intereses),
-        "alojamiento":     0.05 + 0.08 * (dias >= 3) + 0.04 * (dias >= 5),
-    }
-    s = sum(w.values()) or 1.0
-    return {a: w[a] / s for a in _CORE}
-
-
-def _afinidad_clima(pref: str, temp, pp) -> float:
-    pref = _norm(pref or "indiferente")
-    if "calido"   in pref: return 0.5 if temp is None else _clip((temp - 10) / (22 - 10))
-    if "frio"     in pref: return 0.5 if temp is None else _clip((20 - temp) / (20 - 8))
-    if "templado" in pref:
-        if temp is None: return 0.5
-        return _clip(1 - max(0.0, 12 - temp, temp - 24) / 8)
-    if "seco"     in pref: return 0.5 if pp is None else _clip((180 - pp) / (180 - 30))
-    return 0.5
-
+# Umbrales de la etiqueta (tesis, Fase 3 NB02).
+_COBERTURA_ALTA = 0.50
+_COBERTURA_MINIMA = 0.01
+_CALIDAD_ACEPTABLE = 0.60
 
 MONTH_NAMES = {
     1: "enero", 2: "febrero", 3: "marzo", 4: "abril", 5: "mayo", 6: "junio",
@@ -107,25 +93,134 @@ MONTH_NAMES = {
 }
 
 
-def _label(pct: int) -> str:
-    """Etiqueta cualitativa por rango (en vez de mostrar el % crudo)."""
-    if pct >= 70: return "Excelente para ti"
-    if pct >= 60: return "Muy recomendado"
-    if pct >= 50: return "Recomendado"
-    if pct >= 40: return "Podría gustarte"
-    return "Alternativa"
+def _norm(t) -> str:
+    t = unicodedata.normalize("NFKD", str(t).strip().lower())
+    t = "".join(c for c in t if not unicodedata.combining(c))
+    return "_".join(t.split())
 
 
-def _contexto_C(ctx, pref_clima: str, ftol: float, w_clima: float, w_aforo: float) -> float:
-    """Componente contextual C en [0,1] (clima + aforo personalizados) para un mes."""
-    clima_score = ctx.clima_score if ctx and ctx.clima_score is not None else _NEUTRAL
-    aforo_score = ctx.aforo_score if ctx and ctx.aforo_score is not None else _NEUTRAL
-    temp_prom   = ctx.temp_prom if ctx else None
-    pp          = ctx.pp if ctx else None
-    afc        = _afinidad_clima(pref_clima, temp_prom, pp)
-    clima_pers = _clip(clima_score * (0.7 + 0.6 * afc))
-    aforo_pers = _clip(0.5 + (aforo_score - 0.5) * ftol)
-    return w_clima * clima_pers + w_aforo * aforo_pers
+def _clip(x: float) -> float:
+    return max(0.0, min(1.0, float(x)))
+
+
+def _load_config(db: Session) -> dict:
+    cfg = db.query(EngineConfig).first()
+    if not cfg:
+        return dict(_DEFAULTS)
+    return {
+        "alpha_absa": float(cfg.alpha_absa),
+        "beta_contexto": float(cfg.beta_contexto),
+        "w_clima": float(cfg.w_clima),
+        "w_aforo": float(cfg.w_aforo),
+    }
+
+
+# ── Normalización del perfil de la app al vocabulario de la tesis ────────────
+
+def _perfil_intereses(profile: dict) -> set[str]:
+    """Intereses declarados dentro del vocabulario de la tesis (Compras/Negocios se ignoran)."""
+    return {n for n in (_norm(i) for i in (profile.get("intereses") or [])) if n in INTEREST_VOCAB}
+
+
+def _perfil_clima(profile: dict) -> str:
+    p = _norm(profile.get("clima_preferido") or "indiferente")
+    return p if p in _CLIMATE_PREFS else "indiferente"
+
+
+def _perfil_tolerancia(profile: dict) -> str:
+    t = _norm(profile.get("tolerancia_multitudes") or "media")
+    if t in ("baja", "bajo"):
+        return "baja"
+    if t in ("alta", "alto"):
+        return "alta"
+    return "media"  # media / moderado / moderada / desconocido
+
+
+def _pesos_calidad(profile: dict, intereses: set[str]) -> dict:
+    """
+    Pesos de los 3 aspectos de calidad (suman 1).
+    1) Si el viajero ajustó los sliders peso_* (no todos iguales) se normalizan.
+    2) Si no, se infiere el tipo de viajero (presupuesto bajo -> económico/mochilero;
+       si no, interés dominante) y se usan los pesos de la tesis.
+    3) Sin información: uniformes.
+    """
+    sliders = [profile.get(f"peso_{a}") for a in _QUALITY]
+    if all(s is not None for s in sliders) and len({round(float(s), 6) for s in sliders}) > 1:
+        tot = sum(float(s) for s in sliders) or 1.0
+        return {a: float(s) / tot for a, s in zip(_QUALITY, sliders)}
+
+    tipo = None
+    if _norm(profile.get("presupuesto") or "") == "bajo":
+        tipo = "economico_mochilero"
+    else:
+        votos: dict[str, int] = {}
+        for i in sorted(intereses):
+            t = _INTEREST_TO_TYPE.get(i)
+            if t:
+                votos[t] = votos.get(t, 0) + 1
+        if votos:
+            tipo = max(votos, key=lambda k: (votos[k], -list(_PESOS_POR_PERFIL).index(k)))
+    if tipo:
+        return dict(_PESOS_POR_PERFIL[tipo])
+    return {a: 1 / len(_QUALITY) for a in _QUALITY}
+
+
+# ── Núcleo del modelo ────────────────────────────────────────────────────────
+
+def _rownorm(values: dict[str, float]) -> dict[str, float]:
+    """Min-max sobre los destinos del motor; 0.5 si no hay rango (tesis: normalizar_filas)."""
+    lo, hi = min(values.values()), max(values.values())
+    rango = hi - lo
+    if rango <= 1e-12:
+        return {k: 0.5 for k in values}
+    return {k: (v - lo) / rango for k, v in values.items()}
+
+
+def _contexto(ctx, pref: str, tol: str, w_clima: float, w_aforo: float) -> float:
+    """C en [0,1]: clima según la preferencia + aforo ya personalizado por tolerancia."""
+    clima = None
+    aforo = None
+    if ctx is not None:
+        clima = (ctx.clima_por_preferencia or {}).get(pref)
+        if clima is None:
+            clima = ctx.clima_score
+        aforo = (ctx.aforo_por_tolerancia or {}).get(tol)
+        if aforo is None:
+            aforo = ctx.aforo_score
+    clima = _NEUTRAL if clima is None else float(clima)
+    aforo = _NEUTRAL if aforo is None else float(aforo)
+    return w_clima * clima + w_aforo * aforo
+
+
+def _etiqueta(cobertura: float, calidad: float) -> str:
+    tematico = cobertura >= _COBERTURA_ALTA
+    algo = cobertura >= _COBERTURA_MINIMA
+    buena = calidad >= _CALIDAD_ACEPTABLE
+    if tematico and buena:
+        return "Recomendado"
+    if algo or buena:
+        return "Parcialmente recomendado"
+    return "No recomendado"
+
+
+def _explicar(intereses: set[str], tags: set[str], absa_vals: dict, best_month_name: str) -> str:
+    comunes = sorted(intereses & tags)
+    if comunes:
+        partes = ["coincide con tu interés en " + ", ".join(comunes)]
+    elif intereses:
+        partes = ["no coincide con ninguno de tus intereses declarados (" + ", ".join(sorted(intereses)) + ")"]
+    else:
+        partes = []
+    buenos = [a for a in _QUALITY if absa_vals[a] >= 0.70]
+    malos = [a for a in _QUALITY if absa_vals[a] < 0.50]
+    if buenos:
+        partes.append("buena valoración de " + ", ".join(_ASPECT_LABEL[a] for a in buenos))
+    if malos:
+        partes.append("valoración baja de " + ", ".join(_ASPECT_LABEL[a] for a in malos))
+    if best_month_name:
+        partes.append(f"mejor mes para ir: {best_month_name}")
+    texto = "; ".join(partes)
+    return (texto[:1].upper() + texto[1:] + ".") if texto else "Recomendación personalizada."
 
 
 def generate_recommendations(
@@ -135,153 +230,133 @@ def generate_recommendations(
     db: Session = SessionLocal()
     try:
         cfg = _load_config(db)
-        alpha   = float(cfg["alpha_afinidad"])
-        beta_in = float(cfg["beta_intereses"])
-        beta_cx = float(cfg["beta_contexto"])
-        w_clima = float(cfg["w_clima"])
-        w_aforo = float(cfg["w_aforo"])
-        ftol_map = cfg["factor_tolerancia"]
+        alpha = cfg["alpha_absa"]
+        beta_cx = cfg["beta_contexto"]
+        w_clima, w_aforo = cfg["w_clima"], cfg["w_aforo"]
 
-        # Mes objetivo: el que pida el usuario (1-12) o el actual por defecto.
         mes = int(month) if month and 1 <= int(month) <= 12 else datetime.now().month
         region_f = _norm(region) if region else None
-        w   = _pesos_desde_perfil(user_profile)
 
-        intereses  = {_norm(i) for i in (user_profile.get("intereses") or [])}
-        pref_clima = user_profile.get("clima_preferido") or "indiferente"
-        tol        = _norm(user_profile.get("tolerancia_multitudes") or "media")
-        ftol       = float(ftol_map.get(tol, ftol_map.get("media", 0.65)))
+        intereses = _perfil_intereses(user_profile)
+        pref = _perfil_clima(user_profile)
+        tol = _perfil_tolerancia(user_profile)
+        w = _pesos_calidad(user_profile, intereses)
 
-        # Universo: destinos activos + catálogo + ABSA (un solo query).
-        rows = (
-            db.execute(
-                select(Destination, TourismCatalog, DestinationAspectScore)
-                .outerjoin(TourismCatalog, Destination.destination_id == TourismCatalog.destination_id)
-                .outerjoin(DestinationAspectScore, Destination.destination_id == DestinationAspectScore.destination_id)
-                .where(Destination.is_active.is_(True))
-            ).all()
-        )
-        if not rows:
-            logger.warning("Motor V1: no hay destinos activos en BD")
+        # Universo del motor: activos + in_engine (un solo query con catálogo y ABSA).
+        rows = db.execute(
+            select(Destination, TourismCatalog, DestinationAspectScore)
+            .outerjoin(TourismCatalog, Destination.destination_id == TourismCatalog.destination_id)
+            .outerjoin(DestinationAspectScore, Destination.destination_id == DestinationAspectScore.destination_id)
+            .where(Destination.is_active.is_(True), Destination.in_engine.is_(True))
+        ).all()
+
+        universe = []
+        for dest, cat, absa in rows:
+            if absa is None or any(getattr(absa, a) is None for a in _QUALITY):
+                logger.warning("Motor: %s está in_engine pero sin los 3 puntajes de calidad; se omite",
+                               dest.destination_id)
+                continue
+            universe.append((dest, cat, absa))
+        if not universe:
+            logger.warning("Motor: no hay destinos elegibles (activos + in_engine + ABSA)")
             return []
 
-        dest_ids = [d.destination_id for d, _, _ in rows]
+        dest_ids = [d.destination_id for d, _, _ in universe]
 
-        # Tags por destino (batch).
         tags_by_dest: dict[str, set[str]] = {did: set() for did in dest_ids}
         for t in db.execute(
             select(DestinationTag).where(DestinationTag.destination_id.in_(dest_ids))
         ).scalars():
             tags_by_dest.setdefault(t.destination_id, set()).add(_norm(t.tag))
 
-        # Contexto de los 12 meses (batch) -> permite mes objetivo + "mejor mes para ti".
-        ctx_by_dest_month: dict[tuple[str, int], DestinationMonthContext] = {}
+        ctx_by: dict[tuple[str, int], DestinationMonthContext] = {}
         for c in db.execute(
-            select(DestinationMonthContext).where(
-                DestinationMonthContext.destination_id.in_(dest_ids),
-            )
+            select(DestinationMonthContext).where(DestinationMonthContext.destination_id.in_(dest_ids))
         ).scalars():
-            ctx_by_dest_month[(c.destination_id, c.month)] = c
+            ctx_by[(c.destination_id, c.month)] = c
 
-        # Covers from DestinationMedia (Cloudinary)
         from app.services import destination_media_service
-        active_covers = destination_media_service.get_covers_batch(db)
+        covers = destination_media_service.get_covers_batch(db)
 
-        raw = []
-        for dest, cat, absa in rows:
+        # --- Fase 3: afinidad (normalizada sobre TODO el universo del motor) ---
+        s_int: dict[str, float] = {}
+        s_abs: dict[str, float] = {}
+        absa_of: dict[str, dict] = {}
+        for dest, _, absa in universe:
             did = dest.destination_id
+            vals = {a: float(getattr(absa, a)) for a in _QUALITY}
+            absa_of[did] = vals
+            s_int[did] = (len(intereses & tags_by_dest[did]) / len(intereses)) if intereses else 0.0
+            s_abs[did] = sum(w[a] * vals[a] for a in _QUALITY)
+        n_int, n_abs = _rownorm(s_int), _rownorm(s_abs)
+        afinidad = {did: (1 - alpha) * n_int[did] + alpha * n_abs[did] for did in dest_ids}
 
-            # Filtro por departamento/región (si se indica).
-            if region_f and _norm(cat.region if cat else "") != region_f:
+        # --- Fase 4: score por mes ---
+        raw = []
+        for dest, cat, _ in universe:
+            did = dest.destination_id
+            if region_f and _norm(cat.region if cat and cat.region else "") != region_f:
                 continue
 
-            absa_vals = {
-                a: (getattr(absa, a) if absa and getattr(absa, a) is not None else _NEUTRAL)
-                for a in _CORE
-            }
-            score_absa = sum(w.get(a, 0.0) * float(absa_vals[a]) for a in _CORE)
+            def score_mes(m: int) -> float:
+                c = _contexto(ctx_by.get((did, m)), pref, tol, w_clima, w_aforo)
+                return afinidad[did] + beta_cx * (c - 0.5)
 
-            tags      = tags_by_dest.get(did, set())
-            match_int = (len(intereses & tags) / len(intereses)) if intereses else 0.0
-            afinidad  = (1 - beta_in) * score_absa + beta_in * match_int
-
-            # --- Score del mes objetivo ---
-            ctx = ctx_by_dest_month.get((did, mes))
-            clima_nivel = ctx.clima_nivel if ctx else "Sin dato"
-            aforo_nivel = ctx.aforo_nivel if ctx else "Sin dato"
-            C     = _contexto_C(ctx, pref_clima, ftol, w_clima, w_aforo)
-            score = _clip(alpha * afinidad + beta_cx * (C - 0.5))
-
-            # --- Mejor mes para ESTE perfil (re-evalúa el contexto en los 12 meses) ---
-            best_m, best_s = mes, -1.0
-            for m in range(1, 13):
-                cm = _contexto_C(ctx_by_dest_month.get((did, m)), pref_clima, ftol, w_clima, w_aforo)
-                sm = _clip(alpha * afinidad + beta_cx * (cm - 0.5))
-                if sm > best_s:
-                    best_s, best_m = sm, m
-
-            top_aspects = sorted(
-                [{"aspect": a, "user_weight": round(w.get(a, 0.0), 3),
-                  "destination_score": round(float(absa_vals[a]), 4),
-                  "contribution": round(w.get(a, 0.0) * float(absa_vals[a]), 4)}
-                 for a in _CORE],
-                key=lambda x: x["contribution"], reverse=True,
-            )[:3]
-
+            score = score_mes(mes)
+            best_m = max(range(1, 13), key=score_mes)
+            ctx = ctx_by.get((did, mes))
             raw.append({
-                "destination_id":  did,
-                "name":            dest.destination,
-                "city":            cat.city if cat else None,
-                "region":          cat.region if cat else None,
-                "category":        cat.category if cat else None,
-                "cover_image_url": active_covers.get(did),
-                "score":           score,
-                "clima_nivel":     clima_nivel,
-                "aforo_nivel":     aforo_nivel,
-                "best_month":      best_m,
-                "best_month_score": round(best_s, 4),
-                "has_real_scores": absa is not None,
-                "top_aspects":     top_aspects,
+                "dest": dest, "cat": cat, "did": did,
+                "score": score, "best_m": best_m, "best_s": score_mes(best_m),
+                "clima_nivel": ctx.clima_nivel if ctx else "Sin dato",
+                "aforo_nivel": ctx.aforo_nivel if ctx else "Sin dato",
             })
 
         raw.sort(key=lambda r: r["score"], reverse=True)
-        top = raw[:limit]
 
         items = []
-        for rank, r in enumerate(top, 1):
-            compat_score = round(r["score"], 4)
-            compat_pct   = round(compat_score * 100)
-            label        = _label(compat_pct)
-            best_m       = r["best_month"]
-            best_m_name  = MONTH_NAMES.get(best_m, "")
-            mes_name     = MONTH_NAMES.get(mes, "")
+        for rank, r in enumerate(raw[:limit], 1):
+            did, cat = r["did"], r["cat"]
+            score = r["score"]
+            compat_score = round(_clip(score), 4)
+            compat_pct = round(compat_score * 100)
+            label = _etiqueta(s_int[did], s_abs[did])
+            best_m = r["best_m"]
+            best_m_name = MONTH_NAMES.get(best_m, "")
+            mes_name = MONTH_NAMES.get(mes, "")
+            top_aspects = sorted(
+                [{"aspect": a, "user_weight": round(w[a], 3),
+                  "destination_score": round(absa_of[did][a], 4),
+                  "contribution": round(w[a] * absa_of[did][a], 4)} for a in _QUALITY],
+                key=lambda x: x["contribution"], reverse=True,
+            )
             items.append({
-                "destination_id":        r["destination_id"],
-                "name":                  r["name"],
-                "city":                  r["city"],
-                "region":                r["region"],
-                "category":              r["category"],
-                "cover_image_url":       r["cover_image_url"],
-                "rating":                None,
-                "compatibility_score":   compat_score,
+                "destination_id": did,
+                "name": r["dest"].destination,
+                "city": cat.city if cat else None,
+                "region": cat.region if cat else None,
+                "category": cat.category if cat else None,
+                "cover_image_url": covers.get(did),
+                "rating": None,
+                "compatibility_score": compat_score,
                 "compatibility_percent": compat_pct,
-                "label":                 label,
-                "month":                 mes,
-                "month_name":            mes_name,
-                "best_month":            best_m,
-                "best_month_name":       best_m_name,
-                "context_status":        f"Clima {r['clima_nivel']} · Aforo {r['aforo_nivel']} · {mes_name.capitalize()}",
-                "ranking_position":      rank,
-                "has_real_scores":       r["has_real_scores"],
+                "label": label,
+                "month": mes,
+                "month_name": mes_name,
+                "best_month": best_m,
+                "best_month_name": best_m_name,
+                "context_status": f"Clima {r['clima_nivel']} · Aforo {r['aforo_nivel']} · {mes_name.capitalize()}",
+                "ranking_position": rank,
+                "has_real_scores": True,
                 "explanation": {
-                    "summary":     f"{label} para tu perfil · mejor mes para ir: {best_m_name}",
-                    "top_aspects": r["top_aspects"],
+                    "summary": _explicar(intereses, tags_by_dest[did], absa_of[did], best_m_name),
+                    "top_aspects": top_aspects,
                 },
             })
         return items
 
-    except Exception as e:
-        logger.error("Motor V1 error: %s", e)
+    except Exception:
+        logger.exception("Motor de recomendación falló")
         return []
     finally:
         db.close()

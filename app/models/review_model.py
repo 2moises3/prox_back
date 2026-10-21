@@ -26,6 +26,8 @@ class Review(Base, TimestampMixin):
     validation_method: Mapped[str] = mapped_column(String, default="self_report_pending")
     
     # Estados: pending_processing, exported, processed, discarded
+    # Oculta por moderación (tras reportes): no se muestra a otros viajeros ni entra al entrenamiento.
+    is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     status: Mapped[str] = mapped_column(String, default="pending_processing")
     processing_month: Mapped[str | None] = mapped_column(String)  # ej: "2026-06"
     training_batch_id: Mapped[str | None] = mapped_column(ForeignKey("monthly_review_batches.batch_id"), nullable=True)

@@ -1,7 +1,8 @@
 """
 PROXVEL Backend - Review Schemas.
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+from datetime import datetime
 from typing import List, Optional
 
 class AspectRatingCreate(BaseModel):
@@ -19,6 +20,14 @@ class ReviewCreate(BaseModel):
     is_verified_visit: bool = False
     aspect_ratings: List[AspectRatingCreate] = []
 
+    @field_validator("review_text")
+    @classmethod
+    def meaningful_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("La reseña debe incluir texto.")
+        return value
+
 class AspectRatingResponse(BaseModel):
     aspect: str
     rating: float
@@ -28,6 +37,7 @@ class AspectRatingResponse(BaseModel):
         from_attributes = True
 
 class ReviewResponse(BaseModel):
+    created_at: Optional[datetime] = None
     review_id: str
     user_id: str
     destination_id: str
@@ -36,6 +46,7 @@ class ReviewResponse(BaseModel):
     status: str
     processing_month: Optional[str]
     aspect_ratings: List[AspectRatingResponse] = []
+    is_hidden: bool = False
 
     class Config:
         from_attributes = True

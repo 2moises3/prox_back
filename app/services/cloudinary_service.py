@@ -2,6 +2,7 @@
 PROXVEL Backend - Cloudinary Service.
 """
 import logging
+import re
 import uuid
 import cloudinary
 import cloudinary.uploader
@@ -163,3 +164,18 @@ def delete_image(public_id: str) -> bool:
     except Exception as e:
         logger.error(f"Error borrando imagen de Cloudinary: {e}")
         return False
+
+
+def delete_image_by_url(url: str | None) -> bool:
+    """Borra de Cloudinary la imagen de una URL de entrega (p. ej. el avatar de una cuenta eliminada)."""
+    if not url or "/upload/" not in url:
+        return False
+    tail = url.split("/upload/", 1)[1].split("?", 1)[0]
+    parts = [p for p in tail.split("/") if p]
+    if parts and re.fullmatch(r"v\d+", parts[0]):
+        parts = parts[1:]
+    if not parts:
+        return False
+    public_id = "/".join(parts)
+    public_id = public_id.rsplit(".", 1)[0] if "." in parts[-1] else public_id
+    return delete_image(public_id)

@@ -100,7 +100,6 @@ def get_contextual_ranking(user_id: str | None = None, city: str | None = None, 
                     item["category"] = enrichment.get("category")
                     item["tourism_summary"] = {
                         "description": enrichment.get("description"),
-                        "experience_type": enrichment.get("experience_type"),
                         "cover_image_url": active_covers.get(r.destination_id),
                     }
                 

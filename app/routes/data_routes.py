@@ -3,7 +3,10 @@ PROXVEL Backend - Data Routes.
 Endpoint para verificar el estado de carga de los archivos CSV.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+
+from app.core.security import require_admin_or_super_admin
+from app.schemas.user_schema import UserResponse
 
 from app.services import data_status_service
 
@@ -18,7 +21,7 @@ router = APIRouter(prefix="/data", tags=["Data"])
         "y el estado de conexión y tablas de PostgreSQL."
     ),
 )
-def data_status():
+def data_status(_: UserResponse = Depends(require_admin_or_super_admin)):
     """Devuelve el estado combinado de DB y CSV."""
     status = data_status_service.check_data_status()
     return status

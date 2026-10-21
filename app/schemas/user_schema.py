@@ -14,12 +14,13 @@ class UserBase(BaseModel):
     residence_city: Optional[str] = Field(None, max_length=120)
 
 class UserCreate(UserBase):
-    password: str = Field(..., min_length=6)
+    password: str = Field(..., min_length=8, description="Mínimo 8 caracteres")
+    # Aceptación de Términos y Política de Privacidad, y declaración de ser mayor de 18 años.
+    accepted_terms: bool = False
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
-    password: Optional[str] = Field(None, min_length=6)
     avatar_url: Optional[str] = None
     residence_department: Optional[str] = Field(None, max_length=120)
     residence_province: Optional[str] = Field(None, max_length=120)
@@ -30,6 +31,10 @@ class UserResponse(UserBase):
     role: str
     is_active: bool
     avatar_url: Optional[str] = None
+    accepted_terms_version: Optional[str] = None
+    accepted_terms_at: Optional[datetime] = None
+    # Uso interno (validación de sesiones); exclude=True evita que salga en las respuestas.
+    password_changed_at: Optional[datetime] = Field(None, exclude=True)
 
     class Config:
         from_attributes = True
@@ -45,7 +50,7 @@ class AdminUserCreate(BaseModel):
     """Payload para crear usuario desde el dashboard (super_admin only)."""
     name: str = Field(..., min_length=1)
     email: str = Field(..., min_length=5)
-    password: str = Field(..., min_length=6)
+    password: str = Field(..., min_length=8, description="Mínimo 8 caracteres")
     role: str  # Validado contra DASHBOARD_CREATABLE_ROLES en el servicio
 
 

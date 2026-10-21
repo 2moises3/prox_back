@@ -1,3 +1,4 @@
+from datetime import datetime
 """
 PROXVEL Backend - DB User Repository.
 """
@@ -77,10 +78,10 @@ def get_next_user_id() -> str:
     try:
         db = SessionLocal()
         try:
-            last_user = db.scalar(select(User).order_by(User.user_id.desc()).limit(1))
-            if not last_user or not last_user.user_id.startswith('U'):
-                return "U00001"
-            current_num = int(last_user.user_id[1:])
+            # Solo cuentan los IDs con forma U + número: cuentas de sistema (ANON_DELETED) u
+            # otros IDs no deben romper la secuencia ni hacer que se repita uno existente.
+            ids = db.scalars(select(User.user_id).where(User.user_id.op("~")(r"^U[0-9]+$"))).all()
+            current_num = max((int(uid[1:]) for uid in ids), default=0)
             return f"U{current_num + 1:05d}"
         finally:
             db.close()
@@ -88,7 +89,8 @@ def get_next_user_id() -> str:
         logger.error(f"Error generating next user_id: {e}")
         return "U99999"
 
-def create_user(user_id: str, name: Optional[str], email: str, password_hash: str) -> Optional[User]:
+def create_user(user_id: str, name: Optional[str], email: str, password_hash: str,
+                accepted_terms_version: Optional[str] = None) -> Optional[User]:
     try:
         db = SessionLocal()
         try:
@@ -98,7 +100,9 @@ def create_user(user_id: str, name: Optional[str], email: str, password_hash: st
                 email=email,
                 password_hash=password_hash,
                 role="traveler",
-                is_active=True
+                is_active=True,
+                accepted_terms_version=accepted_terms_version,
+                accepted_terms_at=datetime.utcnow() if accepted_terms_version else None,
             )
             db.add(new_user)
             db.commit()
@@ -163,6 +167,7 @@ def ensure_anon_sentinel(db: Session) -> None:
         password_hash="no_login",
         role="traveler",
         is_active=False,
+        account_status="deleted",  # sin esto queda "active" en una BD nueva (la migración solo corrige filas existentes)
     )
     db.add(sentinel)
     db.flush()
@@ -198,6 +203,19 @@ def delete_user_data(db: Session, user_id: str) -> dict:
     # 4. Rankings contextuales (user_id es String plano, sin FK)
     ranking_count = db.query(ContextualRanking).filter(ContextualRanking.user_id == user_id).delete(synchronize_session="fetch")
     counts["rankings_deleted"] = ranking_count
+
+    # 4b. Archivados, notificaciones, lecturas de anuncios y códigos de recuperación
+    from app.models.archive_model import Archive
+    from app.models.notification_model import Notification, AnnouncementRead, NotificationPreference
+    from app.models.password_reset_model import PasswordResetCode
+    from app.models.review_report_model import ReviewReport
+
+    counts["archives_deleted"] = db.query(Archive).filter(Archive.user_id == user_id).delete(synchronize_session="fetch")
+    counts["notifications_deleted"] = db.query(Notification).filter(Notification.user_id == user_id).delete(synchronize_session="fetch")
+    db.query(AnnouncementRead).filter(AnnouncementRead.user_id == user_id).delete(synchronize_session="fetch")
+    db.query(NotificationPreference).filter(NotificationPreference.user_id == user_id).delete(synchronize_session="fetch")
+    db.query(PasswordResetCode).filter(PasswordResetCode.user_id == user_id).delete(synchronize_session="fetch")
+    db.query(ReviewReport).filter(ReviewReport.reporter_user_id == user_id).delete(synchronize_session="fetch")
 
     # 5. Anonimizar reseñas (reasignar al centinela)
     ensure_anon_sentinel(db)

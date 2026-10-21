@@ -9,6 +9,8 @@ class DestinationMediaBase(BaseModel):
     public_id: str | None = None
     provider: str
     alt_text: str | None = None
+    credit: str | None = None
+    license_note: str | None = None
     position: int = 0
     is_active: bool = True
     media_type: str = "gallery"

@@ -3,7 +3,10 @@ PROXVEL Backend - Admin Destination Routes.
 Endpoints administrativos para gestionar información y multimedia de destinos.
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
@@ -18,6 +21,7 @@ from app.schemas.destination_schema import (
     DestinationStatusUpdate,
 )
 from app.services import (
+    content_seed_service,
     destination_service,
     destination_media_service,
     destination_metric_sync_service,
@@ -26,6 +30,30 @@ from app.services import (
 from app.utils.response_builder import success_response
 
 router = APIRouter(prefix="/admin/destinations", tags=["Admin Destinations"])
+audit_logger = logging.getLogger("proxvel.audit")
+
+
+class ContentLoadRequest(BaseModel):
+    # False: solo completa campos vacíos. True: reemplaza lo existente (solo super_admin).
+    overwrite: bool = False
+
+
+@router.post("/content/load", summary="Cargar la ficha comercial de los destinos desde el archivo de datos")
+def load_destination_content(
+    payload: ContentLoadRequest,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin_or_super_admin),
+):
+    if payload.overwrite and current_admin.role != "super_admin":
+        raise HTTPException(status_code=403, detail="Solo un super_admin puede sobrescribir datos existentes.")
+    try:
+        result = content_seed_service.load_content(db, overwrite=payload.overwrite)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="No se encontró seed_data/destination_content.json en el servidor.")
+    audit_logger.info("AUDIT destination_content_load user=%s overwrite=%s updated=%s fields=%s",
+                      current_admin.user_id, payload.overwrite,
+                      result["destinations_updated"], result["fields_written"])
+    return success_response(data=result, message="Contenido de destinos cargado")
 
 
 # ── Listar destinos (incluye inactivos) ───────────────────────────────────────

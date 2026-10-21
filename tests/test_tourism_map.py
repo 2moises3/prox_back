@@ -27,10 +27,11 @@ def override_get_db():
     finally:
         db.close()
 
-app.dependency_overrides[get_db] = override_get_db
-
 @pytest.fixture()
 def test_db():
+    # El get_db falso solo vale durante este test: si quedara puesto, las demás pruebas
+    # de la sesión leerían esta base SQLite vacía en vez de la real.
+    app.dependency_overrides[get_db] = override_get_db
     Base.metadata.create_all(bind=engine)
     db = TestingSessionLocal()
     
@@ -70,6 +71,7 @@ def test_db():
     
     db.close()
     Base.metadata.drop_all(bind=engine)
+    app.dependency_overrides.pop(get_db, None)
 
 client = TestClient(app)
 

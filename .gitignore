@@ -44,3 +44,6 @@ backups/
 app/data/*.csv
 app/data/*.json
 app/data/backups/
+
+# Variables locales de Docker (contienen secretos): usar .env.docker.example como plantilla
+.env.docker

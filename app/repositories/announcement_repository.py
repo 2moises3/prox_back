@@ -43,10 +43,13 @@ def delete(db: Session, obj: Announcement) -> None:
     db.commit()
 
 
-def list_public_active(db: Session, placement: str | None = None) -> list[Announcement]:
+def list_public_active(
+    db: Session, placement: str | None = None, destination_id: str | None = None
+) -> list[Announcement]:
     """
     Anuncios visibles ahora: activos y dentro del rango de fechas.
-    Ordenados por prioridad descendente.
+    Ordenados por prioridad descendente. Con destination_id solo quedan los anuncios
+    de ese destino o los que no apuntan a ninguno en particular.
     """
     now = datetime.now(timezone.utc).replace(tzinfo=None)
 
@@ -57,6 +60,11 @@ def list_public_active(db: Session, placement: str | None = None) -> list[Announ
     ]
     if placement:
         conditions.append(Announcement.placement == placement)
+    if destination_id:
+        conditions.append(or_(
+            Announcement.target_destination_id.is_(None),
+            Announcement.target_destination_id == destination_id,
+        ))
 
     stmt = (
         select(Announcement)

@@ -51,11 +51,10 @@ def get_all_destinations(city: str | None = None, limit: int = 50, include_inact
                     "city": None,
                     "category": None,
                     "region": None,
-                    "type": None,
-                    "subtype": None,
                     "cover_image_url": active_covers.get(dest.destination_id),
-                    "official_source_name": None,
                     "is_active": dest.is_active,
+                    "in_engine": dest.in_engine,
+                    "cost_level": None,
                     "data_status": None,
                     "latitude": None,
                     "longitude": None,
@@ -66,10 +65,8 @@ def get_all_destinations(city: str | None = None, limit: int = 50, include_inact
                         "city": enrichment.get("city"),
                         "category": enrichment.get("category"),
                         "region": enrichment.get("region"),
-                        "type": enrichment.get("type"),
-                        "subtype": enrichment.get("subtype"),
-                        "official_source_name": enrichment.get("official_source_name"),
                         "data_status": enrichment.get("data_status"),
+                        "cost_level": enrichment.get("cost_level"),
                         "latitude": enrichment.get("latitude"),
                         "longitude": enrichment.get("longitude"),
                     })
@@ -87,6 +84,10 @@ def get_all_destinations(city: str | None = None, limit: int = 50, include_inact
 
 
 def get_destination_by_id(destination_id: str, month: int | None = None, include_inactive: bool = False) -> dict[str, Any] | None:
+    # Sin mes explícito se usa el actual: así el clima y aforo del detalle nunca quedan vacíos.
+    if month is None:
+        from datetime import datetime, timezone
+        month = datetime.now(timezone.utc).month
     try:
         db = SessionLocal()
         try:
@@ -180,7 +181,7 @@ def get_destination_by_id(destination_id: str, month: int | None = None, include
                             "month": ctx.month,
                             "month_name": _MONTH_NAMES.get(ctx.month),
                             "periodo": None,
-                            "visitantes_mes": None,
+                            "visitantes_mes": ctx.visitantes_medios,
                             "aforo_normalizado": None,
                             "nivel_aforo": ctx.aforo_nivel,
                             "score_aforo_base": ctx.aforo_score,
@@ -194,43 +195,30 @@ def get_destination_by_id(destination_id: str, month: int | None = None, include
             tourism_info = None
             if enrichment:
                 tourism_info = {
-                    "official_name": enrichment.get("official_name"),
-                    "department": enrichment.get("department"),
-                    "province": enrichment.get("province"),
-                    "district": enrichment.get("district"),
-                    "type": enrichment.get("type"),
-                    "subtype": enrichment.get("subtype"),
-                    "hierarchy": enrichment.get("hierarchy"),
                     "altitude_m": enrichment.get("altitude_m"),
                     "description": enrichment.get("description"),
-                    "experience_type": enrichment.get("experience_type"),
-                    "visitor_info_summary": enrichment.get("visitor_info_summary"),
                     "activities_summary": enrichment.get("activities_summary"),
+                    "visitor_info_summary": enrichment.get("visitor_info_summary"),
                     "accessibility_summary": enrichment.get("accessibility_summary"),
+                    "recommended_duration": enrichment.get("recommended_duration"),
+                    "how_to_get": enrichment.get("how_to_get"),
+                    "difficulty": enrichment.get("difficulty"),
+                    "official_website": enrichment.get("official_website"),
                     "latitude": enrichment.get("latitude"),
                     "longitude": enrichment.get("longitude"),
-                    "geofence_radius_m": enrichment.get("geofence_radius_m"),
                     "gallery_images": [g.url for g in media.gallery] if media.gallery else [],
-                    "official_source_name": enrichment.get("official_source_name"),
-                    "official_source_code": enrichment.get("official_source_code"),
-                    "official_source_url": enrichment.get("official_source_url"),
-                    "secondary_source_name": enrichment.get("secondary_source_name"),
-                    "secondary_source_code": enrichment.get("secondary_source_code"),
-                    "secondary_source_url": enrichment.get("secondary_source_url"),
-                    "map_source": enrichment.get("map_source"),
                 }
 
             return {
                 "destination_id": dest.destination_id,
                 "destination": dest.destination,
                 "is_active": dest.is_active,
+                "in_engine": dest.in_engine,
+                "cost_level": enrichment.get("cost_level") if enrichment else None,
                 "city": enrichment.get("city") if enrichment else None,
                 "region": enrichment.get("region") if enrichment else None,
                 "category": enrichment.get("category") if enrichment else None,
-                "type": enrichment.get("type") if enrichment else None,
-                "subtype": enrichment.get("subtype") if enrichment else None,
                 "cover_image_url": cover_url,
-                "official_source_name": enrichment.get("official_source_name") if enrichment else None,
                 "aspect_scores": aspect_scores,
                 "context": {
                     "weather_score": weather_detail.get("score_clima"),
@@ -354,25 +342,22 @@ def update_destination_admin(db: Session, destination_id: str, update_data: dict
         if "name" in update_data and update_data["name"] is not None:
             dest.destination = update_data["name"]
 
-        # Campos editables de TourismCatalog. El payload usa 'type' pero el
-        # atributo del modelo es 'type_' (la columna se llama "type").
+        # Campos editables de TourismCatalog.
         _CATALOG_FIELDS = [
-            "official_name", "department", "province", "district", "city", "region",
-            "category", "subtype", "hierarchy", "altitude_m",
-            "description", "experience_type", "visitor_info_summary",
-            "activities_summary", "accessibility_summary",
-            "latitude", "longitude", "geofence_radius_m",
-            "official_source_name", "official_source_code", "official_source_url",
-            "secondary_source_name", "secondary_source_code", "secondary_source_url",
-            "map_source",
+            "city", "region", "category", "altitude_m", "description",
+            "activities_summary", "visitor_info_summary", "accessibility_summary",
+            "recommended_duration", "how_to_get", "official_website",
+            "latitude", "longitude",
         ]
         for field in _CATALOG_FIELDS:
             if field in update_data and update_data[field] is not None:
                 setattr(tourism, field, update_data[field])
 
-        # 'type' → atributo 'type_' del modelo
-        if "type" in update_data and update_data["type"] is not None:
-            tourism.type_ = update_data["type"]
+        # Nivel de costo y dificultad: aceptan null para borrarse (el resto de campos ignora null).
+        if "cost_level" in update_data:
+            tourism.cost_level = update_data["cost_level"] or None
+        if "difficulty" in update_data:
+            tourism.difficulty = update_data["difficulty"] or None
 
         db.commit()
 

@@ -10,51 +10,41 @@ from sqlalchemy import select
 
 from app.config.database import SessionLocal
 from app.models.tourism_catalog_model import TourismCatalog
+from app.models.destination_tag_model import DestinationTag
 
 logger = logging.getLogger(__name__)
 
 
-def _build_catalog_item(catalog: TourismCatalog) -> dict[str, Any]:
-    """Transforma el ORM al dict esperado por el contrato JSON."""
-    images = []
-    for img in [catalog.gallery_image_1, catalog.gallery_image_2, catalog.gallery_image_3, catalog.gallery_image_4]:
-        if img:
-            images.append(img)
-            
+def _build_catalog_item(catalog: TourismCatalog, db: Session) -> dict[str, Any]:
+    """Transforma el ORM al dict esperado por el contrato JSON (imágenes desde destination_media)."""
+    from app.services import destination_media_service
+
+    media = destination_media_service.get_destination_media(db, catalog.destination_id)
+    tags = db.scalars(
+        select(DestinationTag.tag).where(DestinationTag.destination_id == catalog.destination_id)
+    ).all()
     return {
         "destination_id": catalog.destination_id,
         "destination": catalog.destination.destination if catalog.destination else None,
-        "official_name": catalog.official_name,
-        "department": catalog.department,
-        "province": catalog.province,
-        "district": catalog.district,
-        "city": catalog.city,
         "region": catalog.region,
+        "city": catalog.city,
         "category": catalog.category,
-        "type": catalog.type_,
-        "subtype": catalog.subtype,
-        "hierarchy": catalog.hierarchy,
         "altitude_m": catalog.altitude_m,
         "description": catalog.description,
-        "experience_type": catalog.experience_type,
-        "visitor_info_summary": catalog.visitor_info_summary,
         "activities_summary": catalog.activities_summary,
+        "visitor_info_summary": catalog.visitor_info_summary,
         "accessibility_summary": catalog.accessibility_summary,
+        "recommended_duration": catalog.recommended_duration,
+        "how_to_get": catalog.how_to_get,
+        "difficulty": catalog.difficulty,
+        "official_website": catalog.official_website,
+        "cost_level": catalog.cost_level,
         "latitude": catalog.latitude,
         "longitude": catalog.longitude,
-        "geofence_radius_m": catalog.geofence_radius_m,
-        "cover_image_url": catalog.cover_image_url,
-        "gallery_images": images,
-        "image_source": catalog.image_source,
-        "image_license_note": catalog.image_license_note,
-        "official_source_name": catalog.official_source_name,
-        "official_source_code": catalog.official_source_code,
-        "official_source_url": catalog.official_source_url,
-        "secondary_source_name": catalog.secondary_source_name,
-        "secondary_source_code": catalog.secondary_source_code,
-        "secondary_source_url": catalog.secondary_source_url,
-        "map_source": catalog.map_source,
+        "cover_image_url": media.cover.url if media.cover else None,
+        "gallery_images": [g.url for g in media.gallery] if media.gallery else [],
         "data_status": catalog.data_status,
+        "interest_tags": sorted(t for t in tags if t),
     }
 
 
@@ -69,7 +59,7 @@ def get_all_catalog() -> list[dict[str, Any]]:
 
             logger.info("PostgreSQL: Leyendo tourism_catalog.")
             catalogs = db.scalars(select(TourismCatalog).options(joinedload(TourismCatalog.destination))).all()
-            return [_build_catalog_item(c) for c in catalogs]
+            return [_build_catalog_item(c, db) for c in catalogs]
         finally:
             db.close()
     except Exception as e:
@@ -91,7 +81,7 @@ def get_catalog_by_id(destination_id: str) -> dict[str, Any] | None:
                 .options(joinedload(TourismCatalog.destination))
                 .where(TourismCatalog.destination_id == destination_id)
             )
-            return _build_catalog_item(catalog) if catalog else None
+            return _build_catalog_item(catalog, db) if catalog else None
         finally:
             db.close()
     except Exception as e:
@@ -142,57 +132,28 @@ def get_enrichment_data(destination_id: str, db: Session | None = None) -> dict[
     try:
         session = db or SessionLocal()
         try:
-            if session.query(TourismCatalog).count() == 0:
-                return None
-
             catalog = session.scalar(
                 select(TourismCatalog).where(TourismCatalog.destination_id == destination_id)
             )
             if not catalog:
                 return None
 
-            images = []
-            for img in [catalog.gallery_image_1, catalog.gallery_image_2, catalog.gallery_image_3, catalog.gallery_image_4]:
-                if img:
-                    images.append(img)
-
             return {
-                # Identidad
-                "official_name": catalog.official_name,
-                # Ubicación administrativa
-                "department": catalog.department,
-                "province": catalog.province,
-                "district": catalog.district,
-                "city": catalog.city,
                 "region": catalog.region,
-                # Clasificación turística
+                "city": catalog.city,
                 "category": catalog.category,
-                "type": catalog.type_,
-                "subtype": catalog.subtype,
-                "hierarchy": catalog.hierarchy,
                 "altitude_m": catalog.altitude_m,
-                # Descripción / experiencia
                 "description": catalog.description,
-                "experience_type": catalog.experience_type,
-                "visitor_info_summary": catalog.visitor_info_summary,
                 "activities_summary": catalog.activities_summary,
+                "visitor_info_summary": catalog.visitor_info_summary,
                 "accessibility_summary": catalog.accessibility_summary,
-                # Geolocalización
+                "recommended_duration": catalog.recommended_duration,
+                "how_to_get": catalog.how_to_get,
+                "difficulty": catalog.difficulty,
+                "official_website": catalog.official_website,
+                "cost_level": catalog.cost_level,
                 "latitude": catalog.latitude,
                 "longitude": catalog.longitude,
-                "geofence_radius_m": catalog.geofence_radius_m,
-                # Multimedia
-                "cover_image_url": catalog.cover_image_url,
-                "gallery_images": images,
-                # Fuentes oficiales
-                "official_source_name": catalog.official_source_name,
-                "official_source_code": catalog.official_source_code,
-                "official_source_url": catalog.official_source_url,
-                "secondary_source_name": catalog.secondary_source_name,
-                "secondary_source_code": catalog.secondary_source_code,
-                "secondary_source_url": catalog.secondary_source_url,
-                "map_source": catalog.map_source,
-                # Estado
                 "data_status": catalog.data_status,
             }
         finally:

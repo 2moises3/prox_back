@@ -23,6 +23,10 @@ from app.models.announcement_model import Announcement
 from app.models.engine_config_model import EngineConfig
 from app.models.destination_tag_model import DestinationTag
 from app.models.destination_month_context_model import DestinationMonthContext
+from app.models.archive_model import Archive
+from app.models.app_release_model import AppRelease
+from app.models.notification_model import Notification, AnnouncementRead, NotificationPreference
+from app.models.password_reset_model import PasswordResetCode
 
 __all__ = [
     "Base",
@@ -44,4 +48,12 @@ __all__ = [
     "EngineConfig",
     "DestinationTag",
     "DestinationMonthContext",
+    "Archive",
+    "AppRelease",
+    "Notification",
+    "AnnouncementRead",
+    "NotificationPreference",
+    "PasswordResetCode",
 ]
+from app.models.review_report_model import ReviewReport
+from app.models.audit_event_model import AuditEvent

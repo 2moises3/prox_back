@@ -35,6 +35,15 @@ class User(Base, TimestampMixin):
     deletion_reason: Mapped[str | None] = mapped_column(String)
     deletion_requested_by: Mapped[str | None] = mapped_column(String)
 
+    # Última vez que un administrador restableció la contraseña. Los tokens emitidos antes
+    # (claim iat) dejan de ser válidos: cierra las sesiones abiertas.
+    password_changed_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    # Consentimiento: versión de Términos y Política de Privacidad aceptada y cuándo
+    # (el viajero declara además ser mayor de 18 años en esa misma aceptación).
+    accepted_terms_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    accepted_terms_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     # Relaciones
     traveler_profiles = relationship("TravelerProfile", back_populates="user")
     favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")

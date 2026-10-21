@@ -7,9 +7,10 @@ Gestión administrativa de usuarios.
 - Eliminar usuarios / limpiar datos: solo super_admin.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 
 from pydantic import BaseModel
+from app.core.rate_limit import client_ip
 from app.core.security import require_admin_or_super_admin, require_super_admin
 from app.schemas.user_schema import UserResponse, AdminRoleUpdate, AdminStatusUpdate, AdminUserCreate
 from app.services import user_admin_service
@@ -141,6 +142,25 @@ def delete_user(
 
     action_msg = "Cuenta y datos eliminados" if mode == "full" else "Datos del usuario limpiados"
     return success_response(data=result, message=f"{action_msg} correctamente")
+
+
+@router.post("/{user_id}/reset-password", summary="Restablecer contraseña con una temporal (solo super_admin)")
+def reset_password(
+    user_id: str,
+    request: Request,
+    response: Response,
+    current_user: UserResponse = Depends(require_super_admin),
+):
+    """La contraseña temporal se devuelve una sola vez y no se puede volver a consultar."""
+    result, error, status_code = user_admin_service.reset_user_password(
+        target_user_id=user_id,
+        acting_user_id=current_user.user_id,
+        client_ip=client_ip(request),
+    )
+    if error:
+        raise HTTPException(status_code=status_code or 400, detail=error)
+    response.headers["Cache-Control"] = "no-store"
+    return success_response(data=result, message="Contraseña restablecida. Se muestra una sola vez.")
 
 
 @router.get("/{user_id}/details", summary="Obtener detalles básicos de un usuario (admin)")

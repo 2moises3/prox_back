@@ -1,3 +1,4 @@
+from app.core.legal import TERMS_VERSION
 """
 PROXVEL Backend - User Service.
 """
@@ -28,7 +29,8 @@ def create_user(user_data: UserCreate) -> tuple[Optional[UserResponse], Optional
         user_id=new_user_id,
         name=user_data.name,
         email=user_data.email,
-        password_hash=hashed_password
+        password_hash=hashed_password,
+        accepted_terms_version=TERMS_VERSION if user_data.accepted_terms else None,
     )
     if user:
         return UserResponse.model_validate(user), None
@@ -42,9 +44,6 @@ def update_user(user_id: str, user_data: UserUpdate) -> tuple[Optional[UserRespo
         if existing_user and existing_user.user_id != user_id:
             return None, "El correo electrónico ya está registrado por otro usuario"
             
-    if "password" in update_dict:
-        update_dict["password_hash"] = get_password_hash(update_dict.pop("password"))
-        
     user = db_user_repository.update_user(user_id, update_dict)
     if user:
         return UserResponse.model_validate(user), None

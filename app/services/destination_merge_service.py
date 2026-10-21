@@ -47,13 +47,10 @@ _ABSA_FIELDS = [
     "atractivos", "clima", "costos", "gastronomia", "limpieza", "seguridad",
 ]
 _EDITORIAL_FIELDS = [
-    "official_name", "department", "province", "district", "city", "region",
-    "category", "type_", "subtype", "hierarchy", "altitude_m", "description",
-    "experience_type", "visitor_info_summary", "activities_summary",
-    "accessibility_summary", "latitude", "longitude", "geofence_radius_m",
-    "official_source_name", "official_source_code", "official_source_url",
-    "secondary_source_name", "secondary_source_code", "secondary_source_url",
-    "map_source",
+    "region", "city", "category", "altitude_m", "description",
+    "activities_summary", "visitor_info_summary", "accessibility_summary",
+    "recommended_duration", "how_to_get", "difficulty", "official_website",
+    "cost_level", "latitude", "longitude",
 ]
 
 

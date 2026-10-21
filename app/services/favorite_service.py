@@ -24,7 +24,7 @@ class FavoriteService:
                 region=catalog.region if catalog else None,
                 category=catalog.category if catalog else None,
                 cover_image_url=active_covers.get(fav.destination_id),
-                rating=4.5, # Placeholder ya que la tabla original no tiene un rating simple, o se puede omitir
+                rating=None, # No hay una valoración agregada verificada en este contrato.
                 is_favorite=True,
                 created_at=fav.created_at
             )

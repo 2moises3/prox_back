@@ -4,7 +4,7 @@ Overview de métricas reales para el dashboard administrativo.
 Protegido con require_admin_or_super_admin.
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
@@ -32,3 +32,20 @@ def metrics_charts(
 ):
     data = admin_metrics_service.get_charts_data(db)
     return success_response(data=data, message="Datos de gráficos obtenidos correctamente")
+
+
+@router.get("/activity", summary="Actividad reciente real (registros, reseñas, fotos, anuncios, versiones)")
+def metrics_activity(
+    limit: int = Query(8, ge=1, le=50),
+    db: Session = Depends(get_db),
+    current_user: UserResponse = Depends(require_admin_or_super_admin),
+):
+    return success_response(data=admin_metrics_service.get_activity(db, limit), message="Actividad reciente")
+
+
+@router.get("/priorities", summary="Pendientes reales para el inicio del dashboard")
+def metrics_priorities(
+    db: Session = Depends(get_db),
+    current_user: UserResponse = Depends(require_admin_or_super_admin),
+):
+    return success_response(data=admin_metrics_service.get_priorities(db), message="Prioridades")

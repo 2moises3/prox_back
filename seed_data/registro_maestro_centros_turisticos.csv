@@ -1,0 +1,15 @@
+﻿dataset_key,destination_id,destination,region,tipo_experiencia,intereses,fuente_oficial,estado
+arqueologico_ollantaytambo,ollantaytambo,Sitio Arqueológico de Ollantaytambo,Cusco,arqueológico-cultural,"cultura, historia, aventura",MINCETUR / DatosTurismo,mantener
+catarata_ahuashiyacu,catarata_ahuashiyacu,Catarata de Ahuashiyacu,San Martín,natural-aventura,"naturaleza, aventura, relax",MINCETUR / DatosTurismo,mantener
+chan_chan,chan_chan,Complejo Arqueológico Chan Chan,La Libertad,arqueológico-cultural,"cultura, historia, académico",MINCETUR / DatosTurismo,mantener
+ciudadela_kuelap,ciudadela_kuelap,Ciudadela de Kuélap,Amazonas,arqueológico-natural,"cultura, naturaleza, aventura",MINCETUR / DatosTurismo,mantener
+huaca_luna,huaca_luna,Huaca de la Luna,La Libertad,arqueológico-cultural,"cultura, historia, académico",MINCETUR / DatosTurismo,mantener
+huaca_pucllana,huaca_pucllana,Museo de Sitio Huaca Pucllana,Lima,arqueológico-urbano,"cultura, urbano, gastronomía",MINCETUR / DatosTurismo,mantener
+lineas_nazca,lineas_nazca,Líneas y Geoglifos de Nasca y Palpa,Ica,arqueológico-cultural,"cultura, aventura, fotografía",MINCETUR / DatosTurismo,mantener
+machu_picchu,machu_picchu,Santuario Histórico de Machu Picchu,Cusco,arqueológico-cultural-natural,"cultura, naturaleza, aventura, académico",MINCETUR / DatosTurismo,mantener
+museo_sipan,museo_sipan,Museo Tumbas Reales del Señor de Sipán,Lambayeque,cultural-museístico,"cultura, académico, familiar",MINCETUR / DatosTurismo,mantener
+parque_aguas,parque_aguas,Circuito Mágico del Agua,Lima,urbano-recreativo,"urbano, familiar, relax",MINCETUR / DatosTurismo,mantener
+parque_huascaran,parque_huascaran,Parque Nacional Huascarán,Áncash,natural-aventura,"naturaleza, aventura, montañismo",SERNANP / MINCETUR,mantener
+reserva_paracas,reserva_paracas,Reserva Nacional de Paracas,Ica,natural-playa,"naturaleza, playa, aventura, relax",MINCETUR / DatosTurismo,mantener
+valle_colca,valle_colca,Valle del Colca,Arequipa,natural-rural,"naturaleza, rural, aventura, relax",MINCETUR / DatosTurismo,mantener
+ventanillas_otuzco,ventanillas_otuzco,Ventanillas de Otuzco,Cajamarca,arqueológico-cultural,"cultura, historia, fotografía",MINCETUR / DatosTurismo,mantener

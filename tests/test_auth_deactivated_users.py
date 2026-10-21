@@ -110,7 +110,8 @@ def test_deactivated_user_blocks_registration(client, setup_dummy_user):
     response = client.post("/api/v1/users", json={
         "name": "Another Guy",
         "email": DUMMY_EMAIL,
-        "password": "anotherpassword123"
+        "password": "anotherpassword123",
+        "accepted_terms": True,
     })
     
     # Debe ser 409 Conflict
@@ -130,7 +131,8 @@ def test_full_delete_frees_email(client, setup_dummy_user):
     response = client.post("/api/v1/users", json={
         "name": "New Guy",
         "email": DUMMY_EMAIL,
-        "password": "newpassword123"
+        "password": "newpassword123",
+        "accepted_terms": True,
     })
     
     # Debe ser 201 Created (el correo se liberó)

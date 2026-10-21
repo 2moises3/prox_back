@@ -4,7 +4,7 @@ Métricas REALES calculadas desde tablas existentes.
 No genera datos simulados (usuarios activos, CPU, etc. no se inventan).
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select, func, distinct
 from sqlalchemy.orm import Session
@@ -134,4 +134,66 @@ def get_charts_data(db: Session) -> dict:
         "reviews_by_month": reviews_by_month,
         "destinations_by_category": destinations_by_category,
         "destinations_by_region": destinations_by_region,
+    }
+
+
+# ── Actividad reciente y prioridades (inicio del dashboard) ──────────────────
+
+def _iso(dt) -> str | None:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.isoformat()
+
+
+def get_activity(db: Session, limit: int = 8) -> list[dict]:
+    """Últimos eventos reales: registros, reseñas, fotos subidas, anuncios y versiones."""
+    from app.models.app_release_model import AppRelease
+
+    nombres = dict(db.execute(select(Destination.destination_id, Destination.destination)).all())
+    eventos: list[dict] = []
+
+    for u in db.scalars(select(User).where(User.role == "traveler", User.account_status != "deleted")
+                        .order_by(User.created_at.desc()).limit(limit)):
+        eventos.append({"type": "user", "title": u.name or "Nuevo viajero",
+                        "subtitle": "Se registró en la app", "at": u.created_at, "link": "/usuarios"})
+    for r in db.scalars(select(Review).order_by(Review.created_at.desc()).limit(limit)):
+        eventos.append({"type": "review", "title": nombres.get(r.destination_id, r.destination_id),
+                        "subtitle": f"Nueva reseña ({r.rating_general:.0f}★)", "at": r.created_at,
+                        "link": f"/destinos/{r.destination_id}?tab=comments", "destination_id": r.destination_id})
+    for m in db.scalars(select(DestinationMedia).order_by(DestinationMedia.created_at.desc()).limit(limit)):
+        eventos.append({"type": "media", "title": nombres.get(m.destination_id, m.destination_id),
+                        "subtitle": "Portada actualizada" if m.media_type == "cover" else "Foto agregada a la galería",
+                        "at": m.created_at, "link": f"/destinos/{m.destination_id}?tab=multimedia",
+                        "destination_id": m.destination_id})
+    for a in db.scalars(select(Announcement).order_by(Announcement.updated_at.desc()).limit(limit)):
+        nuevo = a.created_at and a.updated_at and abs((a.updated_at - a.created_at).total_seconds()) < 2
+        eventos.append({"type": "announcement", "title": a.title,
+                        "subtitle": "Anuncio creado" if nuevo else "Anuncio editado",
+                        "at": a.updated_at, "link": f"/anuncios/{a.id}"})
+    for rel in db.scalars(select(AppRelease).order_by(AppRelease.created_at.desc()).limit(limit)):
+        eventos.append({"type": "release", "title": f"Versión {rel.version_name}",
+                        "subtitle": "Publicada" if rel.is_published else "Registrada", "at": rel.created_at,
+                        "link": "/versiones"})
+
+    eventos = [e for e in eventos if e["at"] is not None]
+    eventos.sort(key=lambda e: e["at"], reverse=True)
+    return [{**e, "at": _iso(e["at"])} for e in eventos[:limit]]
+
+
+def get_priorities(db: Session) -> dict:
+    """Pendientes reales que el equipo puede resolver desde el dashboard."""
+    reviews_pending = db.scalar(select(func.count(Review.id)).where(Review.status == "pending_processing")) or 0
+    out_of_engine = db.scalar(select(func.count(Destination.id)).where(
+        Destination.is_active.is_(True), Destination.in_engine.is_(False))) or 0
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    soon = now + timedelta(days=7)
+    expiring = db.scalar(select(func.count(Announcement.id)).where(
+        Announcement.is_active.is_(True), Announcement.ends_at.is_not(None),
+        Announcement.ends_at >= now, Announcement.ends_at <= soon)) or 0
+    return {
+        "reviews_pending": reviews_pending,
+        "destinations_out_of_engine": out_of_engine,
+        "announcements_expiring_7d": expiring,
     }

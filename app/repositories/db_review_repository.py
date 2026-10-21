@@ -6,7 +6,7 @@ import uuid
 from typing import List, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import select
+from sqlalchemy import select, true
 
 from app.config.database import SessionLocal
 from app.models.review_model import Review
@@ -73,31 +73,33 @@ def get_review_by_id(review_id: str) -> Optional[Review]:
         logger.error(f"Error fetching review by id: {e}")
         return None
 
-def get_reviews_by_destination(destination_id: str) -> List[Review]:
+def get_reviews_by_destination(destination_id: str, include_hidden: bool = False) -> List[Review]:
     try:
         db = SessionLocal()
         try:
             return list(db.scalars(
                 select(Review).options(joinedload(Review.aspect_ratings)).where(Review.destination_id == destination_id)
+                .where(true() if include_hidden else Review.is_hidden.is_(False))
+                .order_by(Review.created_at.desc())
             ).unique().all())
         finally:
             db.close()
     except Exception as e:
         logger.error(f"Error fetching reviews by destination: {e}")
-        return []
+        raise
 
 def get_reviews_by_user(user_id: str) -> List[Review]:
     try:
         db = SessionLocal()
         try:
             return list(db.scalars(
-                select(Review).options(joinedload(Review.aspect_ratings)).where(Review.user_id == user_id)
+                select(Review).options(joinedload(Review.aspect_ratings)).where(Review.user_id == user_id).order_by(Review.created_at.desc())
             ).unique().all())
         finally:
             db.close()
     except Exception as e:
         logger.error(f"Error fetching reviews by user: {e}")
-        return []
+        raise
 
 def get_pending_reviews() -> List[Review]:
     try:
@@ -105,6 +107,7 @@ def get_pending_reviews() -> List[Review]:
         try:
             return list(db.scalars(
                 select(Review).options(joinedload(Review.aspect_ratings)).where(Review.status == "pending_processing")
+                .where(Review.is_hidden.is_(False))
             ).unique().all())
         finally:
             db.close()
@@ -125,6 +128,7 @@ def get_and_mark_reviews_for_export(year: int, month: int, batch_id: str) -> Lis
                 select(Review)
                 .options(joinedload(Review.aspect_ratings))
                 .where(Review.status == "pending_processing")
+                .where(Review.is_hidden.is_(False))
                 .where(Review.processing_month == processing_month_str)
             ).unique().all()
             

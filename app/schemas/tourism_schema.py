@@ -1,48 +1,36 @@
 """
 PROXVEL Backend - Tourism Schemas.
-Schemas Pydantic para el catálogo turístico oficial.
-Información complementaria de MINCETUR que no afecta los scores de tesis.
+Información comercial de los destinos (no afecta los scores de la tesis).
 """
 
 from pydantic import BaseModel
 
 
 class TourismCatalogItem(BaseModel):
-    """Item completo del catálogo turístico oficial."""
+    """Item completo del catálogo turístico."""
 
     destination_id: str
     destination: str
-    official_name: str | None = None
-    department: str | None = None
-    province: str | None = None
-    district: str | None = None
-    city: str | None = None
     region: str | None = None
+    city: str | None = None
     category: str | None = None
-    type: str | None = None
-    subtype: str | None = None
-    hierarchy: int | None = None
     altitude_m: int | None = None
     description: str | None = None
-    experience_type: str | None = None
-    visitor_info_summary: str | None = None
     activities_summary: str | None = None
+    visitor_info_summary: str | None = None
     accessibility_summary: str | None = None
+    recommended_duration: str | None = None
+    how_to_get: str | None = None
+    difficulty: str | None = None
+    official_website: str | None = None
+    cost_level: str | None = None
     latitude: float | None = None
     longitude: float | None = None
-    geofence_radius_m: float | None = None
     cover_image_url: str | None = None
     gallery_images: list[str] = []
-    image_source: str | None = None
-    image_license_note: str | None = None
-    official_source_name: str | None = None
-    official_source_code: str | None = None
-    official_source_url: str | None = None
-    secondary_source_name: str | None = None
-    secondary_source_code: str | None = None
-    secondary_source_url: str | None = None
-    map_source: str | None = None
     data_status: str | None = None
+    # Intereses de la tesis con los que encaja el destino (los mismos tags que usa el motor).
+    interest_tags: list[str] = []
 
 
 class MapMarker(BaseModel):
@@ -57,22 +45,21 @@ class MapMarker(BaseModel):
 
 
 class TourismInfo(BaseModel):
-    """Información turística para enriquecer detalle de destino."""
+    """Información turística para enriquecer el detalle de un destino."""
 
-    official_name: str | None = None
     description: str | None = None
-    experience_type: str | None = None
-    visitor_info_summary: str | None = None
     activities_summary: str | None = None
+    visitor_info_summary: str | None = None
     accessibility_summary: str | None = None
+    recommended_duration: str | None = None
+    how_to_get: str | None = None
+    difficulty: str | None = None
+    official_website: str | None = None
     gallery_images: list[str] = []
-    official_source_name: str | None = None
-    official_source_url: str | None = None
 
 
 class TourismSummary(BaseModel):
     """Resumen turístico breve para enriquecer recomendaciones."""
 
     description: str | None = None
-    experience_type: str | None = None
     cover_image_url: str | None = None

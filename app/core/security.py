@@ -15,6 +15,13 @@ settings = get_settings()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
+def token_lifetime_for_role(role: str) -> timedelta:
+    """Admins y super_admins (dashboard web) tienen sesiones más cortas que el viajero (app)."""
+    if role in ("admin", "super_admin"):
+        return timedelta(minutes=settings.ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES)
+    return timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Crea un nuevo token JWT."""
     to_encode = data.copy()
@@ -23,7 +30,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc)})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
@@ -55,6 +62,17 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserResponse:
     if user is None:
         raise credentials_exception
         
+    # Sesión anterior a un restablecimiento de contraseña: ya no vale.
+    if user.password_changed_at is not None:
+        cutoff = int(user.password_changed_at.replace(tzinfo=timezone.utc).timestamp())
+        issued_at = payload.get("iat")
+        if issued_at is None or int(issued_at) < cutoff:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Tu sesión expiró. Inicia sesión nuevamente.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

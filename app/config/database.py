@@ -14,7 +14,7 @@ if settings.DATABASE_URL:
     # Crear engine sincrónico para PostgreSQL
     engine = create_engine(
         settings.DATABASE_URL,
-        echo=settings.DEBUG,  # Mostrar logs SQL si está en modo DEBUG
+        echo=settings.SQL_ECHO,  # Logs SQL solo si SQL_ECHO=true
         pool_pre_ping=True,   # Verificar si la conexión está viva antes de usarla
     )
 

@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Query, Depends
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
-from app.services import destination_service
+from app.services import destination_context_service, destination_service
 from app.utils.response_builder import success_response
 
 router = APIRouter(prefix="/destinations", tags=["Destinations"])
@@ -34,6 +34,43 @@ def list_destinations(
         data=destinations,
         message="Destinos obtenidos correctamente",
     )
+
+
+@router.get(
+    "/month-context",
+    summary="Clima y afluencia de todos los destinos en un mes",
+    description=(
+        "Datos de la tesis (Fase 4) por destino para el mes pedido: puntaje de clima por "
+        "preferencia (favorable >= 0.70), riesgos y nivel de afluencia. Alimenta los filtros "
+        "de clima y afluencia del buscador. No modifica el motor."
+    ),
+)
+def month_context(
+    month: int = Query(..., ge=1, le=12, description="Mes (1-12)"),
+    db: Session = Depends(get_db),
+):
+    items = destination_context_service.month_context(db, month)
+    return success_response(data=items, message="Contexto mensual obtenido correctamente", count=len(items))
+
+
+@router.get(
+    "/{destination_id}/calendar",
+    summary="Calendario de 12 meses de un destino",
+    description=(
+        "Clima (según la preferencia) y aforo (según la tolerancia) mes a mes, con la explicación "
+        "de la tesis y el mejor/peor mes. Sin parámetros usa clima indiferente y tolerancia media."
+    ),
+)
+def destination_calendar(
+    destination_id: str,
+    clima: str | None = Query(None, description="frio | templado | calido | seco | indiferente"),
+    tolerancia: str | None = Query(None, description="baja | media | alta"),
+    db: Session = Depends(get_db),
+):
+    data = destination_context_service.calendar(db, destination_id, clima, tolerancia)
+    if data is None:
+        raise HTTPException(status_code=404, detail=f"Destino no encontrado: {destination_id}")
+    return success_response(data=data, message="Calendario obtenido correctamente")
 
 
 @router.get(
