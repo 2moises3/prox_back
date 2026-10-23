@@ -5,7 +5,7 @@ Adaptados a las columnas reales de los CSV de tesis.
 Enriquecidos con datos del catálogo turístico (Fase 1B).
 """
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, computed_field
 
 
 class AspectScores(BaseModel):
@@ -63,6 +63,12 @@ class DestinationSummary(BaseModel):
     cover_image_url: str | None = None
     is_active: bool = True
     in_engine: bool = False
+    @computed_field
+    @property
+    def scientific_version(self) -> str | None:
+        from app.services.thesis_engine import get_engine, VERSION
+        return VERSION if self.destination_id in get_engine().ids else None
+
     cost_level: str | None = None  # bajo | medio | alto (editorial)
     data_status: str | None = None
     latitude: float | None = None

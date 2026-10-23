@@ -46,7 +46,8 @@ def check_data_status() -> dict:
     response = {
         "success": True,
         "data": {
-            "data_mode": "database",
+            "data_mode": "database_and_thesis_v3",
+                "engine": {"source": "tesis_v3", "version": "tesis-v3-20261022", "scientific_data": "validated_snapshot", "read_only": True},
             "database_status": {
                 "connected": db_connected,
             },

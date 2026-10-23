@@ -96,7 +96,7 @@ def fresh():
 
 
 def add_profile(db, uid):
-    db.add(TravelerProfile(user_id=uid, presupuesto="medio", dias_viaje=3, clima_preferido="calido",
+    db.add(TravelerProfile(user_id=uid, perfil_turistico="naturalista", presupuesto="medio", dias_viaje=3, clima_preferido="calido",
                            tipo_interes="mixto", intereses=["cultura"], tolerancia_multitudes="media"))
     db.commit()
 

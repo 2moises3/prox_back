@@ -159,19 +159,11 @@ def test_plantilla_con_datos_actuales(client):
     assert data["errors"] == 0 and data["summary"]["cambian"] == 0
 
 
-def test_tesis_aforo_selectivo(client):
-    contenido = (SEED / "aforo_scores.csv").read_bytes()
-    # Evaluar los datos reales: nada cambia.
-    data = post(client, "aforo/preview", contenido, name="aforo_scores.csv").json()["data"]
-    assert data["summary"]["cambian"] == 0 and data["summary"]["sin_cambios"] >= 14
-    # Archivo con un cambio para A y B; se aplica solo a A.
-    texto = "destination_id,mes_num,tolerancia_multitudes,score_aforo_personalizado,score_aforo,nivel_aforo\n"
-    texto += "".join(f"{d},1,{t},0.11,0.22,Bajo\n" for d in (A, B) for t in ("baja", "media", "alta"))
-    prev = post(client, "aforo/preview", texto.encode(), name="aforo.csv").json()["data"]
-    assert {d["destination_id"] for d in prev["destinations"] if d["status"] == "cambia"} == {A, B}
-    post(client, "aforo", texto.encode(), name="aforo.csv", destinations=A)
+def test_snapshot_aforo_es_solo_lectura(client):
     with SessionLocal() as db:
-        ca = db.query(DestinationMonthContext).filter_by(destination_id=A, month=1).first()
-        cb = db.query(DestinationMonthContext).filter_by(destination_id=B, month=1).first()
-        assert ca.aforo_por_tolerancia == {"baja": 0.11, "media": 0.11, "alta": 0.11}
-        assert cb.aforo_por_tolerancia != {"baja": 0.11, "media": 0.11, "alta": 0.11}
+        before = dict(db.query(DestinationMonthContext).filter_by(destination_id=A,month=1).first().aforo_por_tolerancia)
+    contenido = (SEED / "aforo_scores.csv").read_bytes()
+    assert post(client, "aforo/preview", contenido, name="aforo_scores.csv").status_code == 409
+    assert post(client, "aforo", contenido, name="aforo_scores.csv", destinations=A).status_code == 409
+    with SessionLocal() as db:
+        assert db.query(DestinationMonthContext).filter_by(destination_id=A,month=1).first().aforo_por_tolerancia == before

@@ -34,6 +34,10 @@ def get_destination_detail(
 ) -> DestinationDetail | None:
     """Obtiene el detalle completo de un destino mapeado al schema detallado."""
     raw_detail = destination_repository.get_destination_by_id(destination_id, month=month, include_inactive=include_inactive)
+    from app.services.thesis_engine import get_engine
+    engine = get_engine()
+    if raw_detail and destination_id in engine.ids:
+        raw_detail['aspect_scores'] = {key:float(value) for key,value in engine.all_aspects.loc[destination_id].items()}
     return DestinationDetail(**raw_detail) if raw_detail else None
 
 def update_destination_admin(db: Session, destination_id: str, update_data: dict[str, Any]) -> DestinationDetail | None:

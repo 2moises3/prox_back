@@ -1,0 +1,113 @@
+﻿destination_id,destination,aspecto,n_menciones,n_reviews_unique,n_pos,n_neu,n_neg,pct_pos,pct_neu,pct_neg,sentiment_score,confidence,score_ajustado,score_normalizado_0_1,evidence_status,conflict_flag,dominant_label
+catarata_ahuashiyacu,Catarata de Ahuashiyacu,atractivos,427,427,412,14,1,96.49,3.28,0.23,0.9625,1.0,0.9625,0.9813,evidencia_suficiente,0,positivo
+catarata_ahuashiyacu,Catarata de Ahuashiyacu,costos,94,94,7,78,9,7.45,82.98,9.57,-0.0213,1.0,-0.0213,0.4894,evidencia_suficiente,0,neutro
+catarata_ahuashiyacu,Catarata de Ahuashiyacu,seguridad,59,59,11,2,46,18.64,3.39,77.97,-0.5932,1.0,-0.5932,0.2034,evidencia_suficiente,0,negativo
+catarata_ahuashiyacu,Catarata de Ahuashiyacu,accesibilidad,158,158,76,76,6,48.1,48.1,3.8,0.443,1.0,0.443,0.7215,evidencia_suficiente,0,neutro
+catarata_ahuashiyacu,Catarata de Ahuashiyacu,limpieza,94,94,48,40,6,51.06,42.55,6.38,0.4468,1.0,0.4468,0.7234,evidencia_suficiente,0,positivo
+catarata_ahuashiyacu,Catarata de Ahuashiyacu,atencion_servicio,58,58,17,40,1,29.31,68.97,1.72,0.2759,1.0,0.2759,0.6379,evidencia_suficiente,0,neutro
+catarata_ahuashiyacu,Catarata de Ahuashiyacu,gastronomia,82,82,33,48,1,40.24,58.54,1.22,0.3902,1.0,0.3902,0.6951,evidencia_suficiente,0,neutro
+catarata_ahuashiyacu,Catarata de Ahuashiyacu,alojamiento,2,2,2,0,0,100.0,0.0,0.0,1.0,0.2,0.2,0.6,evidencia_insuficiente,0,positivo
+chan_chan,Complejo Arqueológico Chan Chan,atractivos,489,489,446,39,4,91.21,7.98,0.82,0.9039,1.0,0.9039,0.9519,evidencia_suficiente,0,positivo
+chan_chan,Complejo Arqueológico Chan Chan,costos,164,164,17,133,14,10.37,81.1,8.54,0.0183,1.0,0.0183,0.5091,evidencia_suficiente,0,neutro
+chan_chan,Complejo Arqueológico Chan Chan,seguridad,6,6,1,0,5,16.67,0.0,83.33,-0.6667,0.6,-0.4,0.3,baja_evidencia,0,negativo
+chan_chan,Complejo Arqueológico Chan Chan,accesibilidad,120,120,45,68,7,37.5,56.67,5.83,0.3167,1.0,0.3167,0.6583,evidencia_suficiente,0,neutro
+chan_chan,Complejo Arqueológico Chan Chan,limpieza,73,73,33,22,18,45.21,30.14,24.66,0.2055,1.0,0.2055,0.6027,evidencia_suficiente,0,positivo
+chan_chan,Complejo Arqueológico Chan Chan,atencion_servicio,235,235,63,166,6,26.81,70.64,2.55,0.2426,1.0,0.2426,0.6213,evidencia_suficiente,0,neutro
+chan_chan,Complejo Arqueológico Chan Chan,gastronomia,53,53,19,33,1,35.85,62.26,1.89,0.3396,1.0,0.3396,0.6698,evidencia_suficiente,0,neutro
+chan_chan,Complejo Arqueológico Chan Chan,alojamiento,7,7,1,6,0,14.29,85.71,0.0,0.1429,0.7,0.1,0.55,baja_evidencia,0,neutro
+ciudadela_kuelap,Ciudadela de Kuélap,atractivos,682,682,630,43,9,92.38,6.3,1.32,0.9106,1.0,0.9106,0.9553,evidencia_suficiente,0,positivo
+ciudadela_kuelap,Ciudadela de Kuélap,costos,163,163,14,140,9,8.59,85.89,5.52,0.0307,1.0,0.0307,0.5153,evidencia_suficiente,0,neutro
+ciudadela_kuelap,Ciudadela de Kuélap,seguridad,42,42,15,0,27,35.71,0.0,64.29,-0.2857,0.65,-0.1857,0.4071,evidencia_suficiente,1,negativo
+ciudadela_kuelap,Ciudadela de Kuélap,accesibilidad,294,294,98,182,14,33.33,61.9,4.76,0.2857,1.0,0.2857,0.6429,evidencia_suficiente,0,neutro
+ciudadela_kuelap,Ciudadela de Kuélap,limpieza,71,71,29,30,12,40.85,42.25,16.9,0.2394,1.0,0.2394,0.6197,evidencia_suficiente,0,neutro
+ciudadela_kuelap,Ciudadela de Kuélap,atencion_servicio,171,171,47,118,6,27.49,69.01,3.51,0.2398,1.0,0.2398,0.6199,evidencia_suficiente,0,neutro
+ciudadela_kuelap,Ciudadela de Kuélap,gastronomia,98,98,27,69,2,27.55,70.41,2.04,0.2551,1.0,0.2551,0.6276,evidencia_suficiente,0,neutro
+ciudadela_kuelap,Ciudadela de Kuélap,alojamiento,40,40,14,23,3,35.0,57.5,7.5,0.275,1.0,0.275,0.6375,evidencia_suficiente,0,neutro
+huaca_luna,Huaca de la Luna,atractivos,371,371,341,28,2,91.91,7.55,0.54,0.9137,1.0,0.9137,0.9569,evidencia_suficiente,0,positivo
+huaca_luna,Huaca de la Luna,costos,123,123,12,109,2,9.76,88.62,1.63,0.0813,1.0,0.0813,0.5407,evidencia_suficiente,0,neutro
+huaca_luna,Huaca de la Luna,seguridad,11,11,3,0,8,27.27,0.0,72.73,-0.4545,0.65,-0.2955,0.3523,evidencia_suficiente,1,negativo
+huaca_luna,Huaca de la Luna,accesibilidad,91,91,46,44,1,50.55,48.35,1.1,0.4945,1.0,0.4945,0.7473,evidencia_suficiente,0,positivo
+huaca_luna,Huaca de la Luna,limpieza,50,50,31,15,4,62.0,30.0,8.0,0.54,1.0,0.54,0.77,evidencia_suficiente,0,positivo
+huaca_luna,Huaca de la Luna,atencion_servicio,204,204,90,110,4,44.12,53.92,1.96,0.4216,1.0,0.4216,0.7108,evidencia_suficiente,0,neutro
+huaca_luna,Huaca de la Luna,gastronomia,50,50,23,26,1,46.0,52.0,2.0,0.44,1.0,0.44,0.72,evidencia_suficiente,0,neutro
+huaca_luna,Huaca de la Luna,alojamiento,1,1,0,1,0,0.0,100.0,0.0,0.0,0.1,0.0,0.5,evidencia_insuficiente,0,neutro
+huaca_pucllana,Museo de Sitio Huaca Pucllana,atractivos,611,611,588,19,4,96.24,3.11,0.65,0.9558,1.0,0.9558,0.9779,evidencia_suficiente,0,positivo
+huaca_pucllana,Museo de Sitio Huaca Pucllana,costos,366,366,67,272,27,18.31,74.32,7.38,0.1093,1.0,0.1093,0.5546,evidencia_suficiente,0,neutro
+huaca_pucllana,Museo de Sitio Huaca Pucllana,seguridad,13,13,2,0,11,15.38,0.0,84.62,-0.6923,1.0,-0.6923,0.1538,evidencia_suficiente,0,negativo
+huaca_pucllana,Museo de Sitio Huaca Pucllana,accesibilidad,172,172,92,76,4,53.49,44.19,2.33,0.5116,1.0,0.5116,0.7558,evidencia_suficiente,0,positivo
+huaca_pucllana,Museo de Sitio Huaca Pucllana,limpieza,48,48,24,8,16,50.0,16.67,33.33,0.1667,0.65,0.1083,0.5542,evidencia_suficiente,1,positivo
+huaca_pucllana,Museo de Sitio Huaca Pucllana,atencion_servicio,476,476,224,241,11,47.06,50.63,2.31,0.4475,1.0,0.4475,0.7237,evidencia_suficiente,0,neutro
+huaca_pucllana,Museo de Sitio Huaca Pucllana,gastronomia,185,185,137,47,1,74.05,25.41,0.54,0.7351,1.0,0.7351,0.8676,evidencia_suficiente,0,positivo
+huaca_pucllana,Museo de Sitio Huaca Pucllana,alojamiento,53,53,22,30,1,41.51,56.6,1.89,0.3962,1.0,0.3962,0.6981,evidencia_suficiente,0,neutro
+lineas_nazca,Líneas y Geoglifos de Nasca y Palpa,atractivos,287,287,256,21,10,89.2,7.32,3.48,0.8571,1.0,0.8571,0.9286,evidencia_suficiente,0,positivo
+lineas_nazca,Líneas y Geoglifos de Nasca y Palpa,costos,94,94,6,70,18,6.38,74.47,19.15,-0.1277,1.0,-0.1277,0.4362,evidencia_suficiente,0,neutro
+lineas_nazca,Líneas y Geoglifos de Nasca y Palpa,seguridad,18,18,2,1,15,11.11,5.56,83.33,-0.7222,1.0,-0.7222,0.1389,evidencia_suficiente,0,negativo
+lineas_nazca,Líneas y Geoglifos de Nasca y Palpa,accesibilidad,60,60,12,43,5,20.0,71.67,8.33,0.1167,1.0,0.1167,0.5583,evidencia_suficiente,0,neutro
+lineas_nazca,Líneas y Geoglifos de Nasca y Palpa,limpieza,17,17,3,9,5,17.65,52.94,29.41,-0.1176,1.0,-0.1176,0.4412,evidencia_suficiente,0,neutro
+lineas_nazca,Líneas y Geoglifos de Nasca y Palpa,atencion_servicio,50,50,15,31,4,30.0,62.0,8.0,0.22,1.0,0.22,0.61,evidencia_suficiente,0,neutro
+lineas_nazca,Líneas y Geoglifos de Nasca y Palpa,gastronomia,38,38,13,22,3,34.21,57.89,7.89,0.2632,1.0,0.2632,0.6316,evidencia_suficiente,0,neutro
+lineas_nazca,Líneas y Geoglifos de Nasca y Palpa,alojamiento,12,12,5,6,1,41.67,50.0,8.33,0.3333,1.0,0.3333,0.6667,evidencia_suficiente,0,neutro
+machu_picchu,Santuario Histórico de Machu Picchu,atractivos,1128,1128,1073,38,17,95.12,3.37,1.51,0.9362,1.0,0.9362,0.9681,evidencia_suficiente,0,positivo
+machu_picchu,Santuario Histórico de Machu Picchu,costos,697,697,17,629,51,2.44,90.24,7.32,-0.0488,1.0,-0.0488,0.4756,evidencia_suficiente,0,neutro
+machu_picchu,Santuario Histórico de Machu Picchu,seguridad,67,67,5,0,62,7.46,0.0,92.54,-0.8507,1.0,-0.8507,0.0746,evidencia_suficiente,0,negativo
+machu_picchu,Santuario Histórico de Machu Picchu,accesibilidad,827,827,196,604,27,23.7,73.04,3.26,0.2044,1.0,0.2044,0.6022,evidencia_suficiente,0,neutro
+machu_picchu,Santuario Histórico de Machu Picchu,limpieza,106,106,42,52,12,39.62,49.06,11.32,0.283,1.0,0.283,0.6415,evidencia_suficiente,0,neutro
+machu_picchu,Santuario Histórico de Machu Picchu,atencion_servicio,462,462,119,329,14,25.76,71.21,3.03,0.2273,1.0,0.2273,0.6136,evidencia_suficiente,0,neutro
+machu_picchu,Santuario Histórico de Machu Picchu,gastronomia,114,114,39,71,4,34.21,62.28,3.51,0.307,1.0,0.307,0.6535,evidencia_suficiente,0,neutro
+machu_picchu,Santuario Histórico de Machu Picchu,alojamiento,119,119,31,85,3,26.05,71.43,2.52,0.2353,1.0,0.2353,0.6176,evidencia_suficiente,0,neutro
+museo_sipan,Museo Tumbas Reales del Señor de Sipán,atractivos,847,847,785,60,2,92.68,7.08,0.24,0.9244,1.0,0.9244,0.9622,evidencia_suficiente,0,positivo
+museo_sipan,Museo Tumbas Reales del Señor de Sipán,costos,224,224,19,192,13,8.48,85.71,5.8,0.0268,1.0,0.0268,0.5134,evidencia_suficiente,0,neutro
+museo_sipan,Museo Tumbas Reales del Señor de Sipán,seguridad,53,53,13,2,38,24.53,3.77,71.7,-0.4717,1.0,-0.4717,0.2642,evidencia_suficiente,0,negativo
+museo_sipan,Museo Tumbas Reales del Señor de Sipán,accesibilidad,113,113,46,64,3,40.71,56.64,2.65,0.3805,1.0,0.3805,0.6903,evidencia_suficiente,0,neutro
+museo_sipan,Museo Tumbas Reales del Señor de Sipán,limpieza,124,124,68,44,12,54.84,35.48,9.68,0.4516,1.0,0.4516,0.7258,evidencia_suficiente,0,positivo
+museo_sipan,Museo Tumbas Reales del Señor de Sipán,atencion_servicio,378,378,138,229,11,36.51,60.58,2.91,0.336,1.0,0.336,0.668,evidencia_suficiente,0,neutro
+museo_sipan,Museo Tumbas Reales del Señor de Sipán,gastronomia,125,125,38,85,2,30.4,68.0,1.6,0.288,1.0,0.288,0.644,evidencia_suficiente,0,neutro
+museo_sipan,Museo Tumbas Reales del Señor de Sipán,alojamiento,11,11,3,8,0,27.27,72.73,0.0,0.2727,1.0,0.2727,0.6364,evidencia_suficiente,0,neutro
+ollantaytambo,Sitio Arqueológico de Ollantaytambo,atractivos,617,617,597,14,6,96.76,2.27,0.97,0.9579,1.0,0.9579,0.9789,evidencia_suficiente,0,positivo
+ollantaytambo,Sitio Arqueológico de Ollantaytambo,costos,236,236,16,208,12,6.78,88.14,5.08,0.0169,1.0,0.0169,0.5085,evidencia_suficiente,0,neutro
+ollantaytambo,Sitio Arqueológico de Ollantaytambo,seguridad,13,13,3,0,10,23.08,0.0,76.92,-0.5385,1.0,-0.5385,0.2308,evidencia_suficiente,0,negativo
+ollantaytambo,Sitio Arqueológico de Ollantaytambo,accesibilidad,330,330,132,190,8,40.0,57.58,2.42,0.3758,1.0,0.3758,0.6879,evidencia_suficiente,0,neutro
+ollantaytambo,Sitio Arqueológico de Ollantaytambo,limpieza,35,35,19,12,4,54.29,34.29,11.43,0.4286,1.0,0.4286,0.7143,evidencia_suficiente,0,positivo
+ollantaytambo,Sitio Arqueológico de Ollantaytambo,atencion_servicio,166,166,61,102,3,36.75,61.45,1.81,0.3494,1.0,0.3494,0.6747,evidencia_suficiente,0,neutro
+ollantaytambo,Sitio Arqueológico de Ollantaytambo,gastronomia,43,43,22,19,2,51.16,44.19,4.65,0.4651,1.0,0.4651,0.7326,evidencia_suficiente,0,positivo
+ollantaytambo,Sitio Arqueológico de Ollantaytambo,alojamiento,38,38,18,19,1,47.37,50.0,2.63,0.4474,1.0,0.4474,0.7237,evidencia_suficiente,0,neutro
+parque_aguas,Circuito Mágico del Agua,atractivos,610,610,592,7,11,97.05,1.15,1.8,0.9525,1.0,0.9525,0.9762,evidencia_suficiente,0,positivo
+parque_aguas,Circuito Mágico del Agua,costos,322,322,74,228,20,22.98,70.81,6.21,0.1677,1.0,0.1677,0.5839,evidencia_suficiente,0,neutro
+parque_aguas,Circuito Mágico del Agua,seguridad,30,30,16,0,14,53.33,0.0,46.67,0.0667,0.65,0.0433,0.5217,evidencia_suficiente,1,positivo
+parque_aguas,Circuito Mágico del Agua,accesibilidad,184,184,104,75,5,56.52,40.76,2.72,0.538,1.0,0.538,0.769,evidencia_suficiente,0,positivo
+parque_aguas,Circuito Mágico del Agua,limpieza,72,72,48,14,10,66.67,19.44,13.89,0.5278,1.0,0.5278,0.7639,evidencia_suficiente,0,positivo
+parque_aguas,Circuito Mágico del Agua,atencion_servicio,76,76,29,45,2,38.16,59.21,2.63,0.3553,1.0,0.3553,0.6776,evidencia_suficiente,0,neutro
+parque_aguas,Circuito Mágico del Agua,gastronomia,68,68,42,25,1,61.76,36.76,1.47,0.6029,1.0,0.6029,0.8015,evidencia_suficiente,0,positivo
+parque_aguas,Circuito Mágico del Agua,alojamiento,27,27,17,10,0,62.96,37.04,0.0,0.6296,1.0,0.6296,0.8148,evidencia_suficiente,0,positivo
+parque_huascaran,Parque Nacional Huascarán,atractivos,517,517,485,30,2,93.81,5.8,0.39,0.9342,1.0,0.9342,0.9671,evidencia_suficiente,0,positivo
+parque_huascaran,Parque Nacional Huascarán,costos,59,59,4,48,7,6.78,81.36,11.86,-0.0508,1.0,-0.0508,0.4746,evidencia_suficiente,0,neutro
+parque_huascaran,Parque Nacional Huascarán,seguridad,18,18,3,0,15,16.67,0.0,83.33,-0.6667,1.0,-0.6667,0.1667,evidencia_suficiente,0,negativo
+parque_huascaran,Parque Nacional Huascarán,accesibilidad,185,185,58,117,10,31.35,63.24,5.41,0.2595,1.0,0.2595,0.6297,evidencia_suficiente,0,neutro
+parque_huascaran,Parque Nacional Huascarán,limpieza,42,42,20,7,15,47.62,16.67,35.71,0.119,0.65,0.0774,0.5387,evidencia_suficiente,1,positivo
+parque_huascaran,Parque Nacional Huascarán,atencion_servicio,45,45,24,19,2,53.33,42.22,4.44,0.4889,1.0,0.4889,0.7444,evidencia_suficiente,0,positivo
+parque_huascaran,Parque Nacional Huascarán,gastronomia,66,66,25,39,2,37.88,59.09,3.03,0.3485,1.0,0.3485,0.6742,evidencia_suficiente,0,neutro
+parque_huascaran,Parque Nacional Huascarán,alojamiento,21,21,9,12,0,42.86,57.14,0.0,0.4286,1.0,0.4286,0.7143,evidencia_suficiente,0,neutro
+reserva_paracas,Reserva Nacional de Paracas,atractivos,771,771,739,30,2,95.85,3.89,0.26,0.9559,1.0,0.9559,0.978,evidencia_suficiente,0,positivo
+reserva_paracas,Reserva Nacional de Paracas,costos,158,158,18,122,18,11.39,77.22,11.39,0.0,1.0,0.0,0.5,evidencia_suficiente,0,neutro
+reserva_paracas,Reserva Nacional de Paracas,seguridad,57,57,14,0,43,24.56,0.0,75.44,-0.5088,1.0,-0.5088,0.2456,evidencia_suficiente,0,negativo
+reserva_paracas,Reserva Nacional de Paracas,accesibilidad,148,148,54,80,14,36.49,54.05,9.46,0.2703,1.0,0.2703,0.6351,evidencia_suficiente,0,neutro
+reserva_paracas,Reserva Nacional de Paracas,limpieza,246,246,163,46,37,66.26,18.7,15.04,0.5122,1.0,0.5122,0.7561,evidencia_suficiente,0,positivo
+reserva_paracas,Reserva Nacional de Paracas,atencion_servicio,103,103,31,65,7,30.1,63.11,6.8,0.233,1.0,0.233,0.6165,evidencia_suficiente,0,neutro
+reserva_paracas,Reserva Nacional de Paracas,gastronomia,152,152,56,90,6,36.84,59.21,3.95,0.3289,1.0,0.3289,0.6645,evidencia_suficiente,0,neutro
+reserva_paracas,Reserva Nacional de Paracas,alojamiento,155,155,67,84,4,43.23,54.19,2.58,0.4065,1.0,0.4065,0.7032,evidencia_suficiente,0,neutro
+valle_colca,Valle del Colca,atractivos,625,625,599,18,8,95.84,2.88,1.28,0.9456,1.0,0.9456,0.9728,evidencia_suficiente,0,positivo
+valle_colca,Valle del Colca,costos,135,135,14,107,14,10.37,79.26,10.37,0.0,1.0,0.0,0.5,evidencia_suficiente,0,neutro
+valle_colca,Valle del Colca,seguridad,37,37,10,0,27,27.03,0.0,72.97,-0.4595,0.65,-0.2986,0.3507,evidencia_suficiente,1,negativo
+valle_colca,Valle del Colca,accesibilidad,282,282,96,170,16,34.04,60.28,5.67,0.2837,1.0,0.2837,0.6418,evidencia_suficiente,0,neutro
+valle_colca,Valle del Colca,limpieza,52,52,13,30,9,25.0,57.69,17.31,0.0769,1.0,0.0769,0.5385,evidencia_suficiente,0,neutro
+valle_colca,Valle del Colca,atencion_servicio,103,103,34,65,4,33.01,63.11,3.88,0.2913,1.0,0.2913,0.6456,evidencia_suficiente,0,neutro
+valle_colca,Valle del Colca,gastronomia,119,119,41,77,1,34.45,64.71,0.84,0.3361,1.0,0.3361,0.6681,evidencia_suficiente,0,neutro
+valle_colca,Valle del Colca,alojamiento,85,85,37,46,2,43.53,54.12,2.35,0.4118,1.0,0.4118,0.7059,evidencia_suficiente,0,neutro
+ventanillas_otuzco,Ventanillas de Otuzco,atractivos,395,395,365,24,6,92.41,6.08,1.52,0.9089,1.0,0.9089,0.9544,evidencia_suficiente,0,positivo
+ventanillas_otuzco,Ventanillas de Otuzco,costos,125,125,11,108,6,8.8,86.4,4.8,0.04,1.0,0.04,0.52,evidencia_suficiente,0,neutro
+ventanillas_otuzco,Ventanillas de Otuzco,seguridad,26,26,1,0,25,3.85,0.0,96.15,-0.9231,1.0,-0.9231,0.0385,evidencia_suficiente,0,negativo
+ventanillas_otuzco,Ventanillas de Otuzco,accesibilidad,166,166,73,82,11,43.98,49.4,6.63,0.3735,1.0,0.3735,0.6867,evidencia_suficiente,0,neutro
+ventanillas_otuzco,Ventanillas de Otuzco,limpieza,69,69,23,28,18,33.33,40.58,26.09,0.0725,0.65,0.0471,0.5236,evidencia_suficiente,1,neutro
+ventanillas_otuzco,Ventanillas de Otuzco,atencion_servicio,93,93,24,67,2,25.81,72.04,2.15,0.2366,1.0,0.2366,0.6183,evidencia_suficiente,0,neutro
+ventanillas_otuzco,Ventanillas de Otuzco,gastronomia,50,50,15,34,1,30.0,68.0,2.0,0.28,1.0,0.28,0.64,evidencia_suficiente,0,neutro
+ventanillas_otuzco,Ventanillas de Otuzco,alojamiento,2,2,2,0,0,100.0,0.0,0.0,1.0,0.2,0.2,0.6,evidencia_insuficiente,0,positivo

@@ -87,7 +87,7 @@ def test_reimportar_la_tesis_no_cambia_nada(client):
     antes = snapshot()
     for kind, fname in FILES.items():
         r = upload(client, kind, (SEED / fname).read_bytes(), fname)
-        assert r.status_code == 200, f"{kind}: {r.text}"
+        assert r.status_code == 409, f"{kind}: {r.text}"
     despues = snapshot()
     for k in SNAPSHOT_SQL:
         assert antes[k], f"sin datos de {k} para comparar"
@@ -97,13 +97,10 @@ def test_reimportar_la_tesis_no_cambia_nada(client):
 def test_tipo_archivo_y_contenido_invalidos(client):
     assert upload(client, "otro", b"a,b\n1,2").status_code == 400
     assert upload(client, "absa", b"a,b\n1,2", name="datos.pdf").status_code == 400
-    assert upload(client, "absa", b"PK\x03\x04 no es un excel", name="datos.xlsx").status_code == 400
+    assert upload(client, "absa", b"PK\x03\x04 no es un excel", name="datos.xlsx").status_code == 409
     assert upload(client, "absa", b"   ").status_code == 400
     r = upload(client, "clima", b"columna_rara,otra\n1,2\n")
-    assert r.status_code in (200, 400)
-    if r.status_code == 200:
-        data = r.json()["data"]
-        assert data.get("status") != "ok" or not data.get("updated"), "un CSV sin columnas útiles no debe actualizar nada"
+    assert r.status_code == 409
 
 
 def test_importar_exige_admin(client):

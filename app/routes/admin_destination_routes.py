@@ -189,13 +189,7 @@ def update_absa_scores(
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_admin_or_super_admin),
 ):
-    scores = payload.model_dump(exclude_unset=True)
-    if not scores:
-        raise HTTPException(status_code=422, detail="Se requiere al menos un puntaje.")
-    updated = destination_service.update_absa_scores(db, destination_id, scores)
-    if not updated:
-        raise HTTPException(status_code=404, detail=f"Destino no encontrado: {destination_id}")
-    return success_response(data=updated, message="Puntajes ABSA actualizados correctamente")
+    raise HTTPException(status_code=409, detail="Los puntajes científicos V3 son de solo lectura.")
 
 
 # ── Multimedia admin (incluye inactivos) ──────────────────────────────────────
@@ -237,6 +231,9 @@ def merge_destination(
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_admin_or_super_admin),
 ):
+    from app.services.thesis_engine import get_engine
+    if source_id in get_engine().ids or target_id in get_engine().ids:
+        raise HTTPException(status_code=409, detail="No se pueden fusionar los IDs del catálogo científico V3.")
     result = destination_merge_service.merge_destinations(db, source_id, target_id)
     return success_response(
         data=result,
@@ -252,6 +249,9 @@ def delete_destination(
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_admin_or_super_admin),
 ):
+    from app.services.thesis_engine import get_engine
+    if destination_id in get_engine().ids:
+        raise HTTPException(status_code=409, detail="Este destino pertenece al motor V3. Puedes ocultarlo, pero su ID debe conservarse.")
     from app.repositories import db_destination_repository
     success = db_destination_repository.delete_destination_admin(db, destination_id)
     if not success:

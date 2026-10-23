@@ -59,6 +59,7 @@ def h(uid=VIAJERO):
 
 
 PERFIL = {
+    "perfil_turistico": "naturalista",
     "intereses": ["naturaleza", "aventura", "montanismo"],
     "clima_preferido": "frio",
     "tolerancia_multitudes": "baja",
@@ -95,17 +96,20 @@ def test_guardar_perfil_no_inventa_pesos(client):
     assert pesos <= {None, 3.0}
 
 
-def test_motor_usa_pesos_de_la_tesis_por_tipo_de_viajero(client):
+def test_motor_usa_tipo_explicito(client):
     perfil = client.get(f"{API}/users/{VIAJERO}/traveler-profile", headers=h()).json()["data"]
-    intereses = {engine._norm(i) for i in perfil["intereses"]}
-    # naturaleza + montañismo → naturalista (2 votos) le gana a aventurero (1)
-    assert engine._pesos_calidad(perfil, intereses) == engine._PESOS_POR_PERFIL["naturalista"]
+    assert perfil["perfil_turistico"] == "naturalista"
+    from app.services.thesis_engine import get_engine
+    assert list(get_engine().components(perfil)["weights"]) == [.25, .30, .45]
 
 
-def test_sliders_explicitos_si_se_respetan():
-    perfil = {"peso_limpieza": 5.0, "peso_atencion_servicio": 1.0, "peso_atractivos": 4.0}
-    w = engine._pesos_calidad(perfil, set())
-    assert w == {"limpieza": 0.5, "atencion_servicio": 0.1, "atractivos": 0.4}
+def test_presupuesto_dias_y_sliders_no_cambian_v3():
+    from app.services.thesis_engine import get_engine
+    import numpy as np
+    engine = get_engine()
+    a = engine.components(PERFIL)
+    b = engine.components({**PERFIL, "presupuesto":"bajo", "dias_viaje":30, "peso_costos":5})
+    np.testing.assert_array_equal(a['scores'], b['scores'])
 
 
 def test_patch_parcial_conserva_lo_demas(client):
@@ -124,7 +128,7 @@ def test_recomendaciones_del_motor(client):
     assert r.status_code == 200, r.text
     body = r.json()
     items = body["data"]
-    assert body["engine"]["source"] == "engine_v1"
+    assert body["engine"]["source"] == "tesis_v3"
     assert 1 <= len(items) <= 14
     ids = [i["destination_id"] for i in items]
     assert len(ids) == len(set(ids))
@@ -187,3 +191,30 @@ def test_siguiente_id_ignora_ids_no_numericos():
     assert nuevo.startswith("U") and nuevo[1:].isdigit()
     with SessionLocal() as db:
         assert db.query(User).filter_by(user_id=nuevo).first() is None, "no debe repetir un ID existente"
+
+
+@pytest.mark.parametrize('month', [1,4,7,10])
+def test_api_v3_reproduce_nucleo_sin_recortar_scores(client, month):
+    from app.services.thesis_engine import get_engine
+    actual = client.get(f'{API}/recommendations/me',params={'limit':100,'month':month},headers=h())
+    assert actual.status_code == 200, actual.text
+    reference = get_engine().recommend(PERFIL,month,14)
+    rows = actual.json()['data']
+    assert [r['destination_id'] for r in rows] == [r['destination_id'] for r in reference]
+    for a,b in zip(rows,reference):
+        assert a['compatibility_score'] == b['compatibility_score']
+        assert a['compatibility_percent'] == b['compatibility_percent']
+        assert a['label_code'] == b['label']
+        assert a['explanation']['shap_values'] == b['explanation']['shap_values']
+
+
+def test_perfil_antiguo_requiere_estilo_explicito(client):
+    from app.models.traveler_profile_model import TravelerProfile
+    with SessionLocal() as db:
+        profile = db.query(TravelerProfile).filter_by(user_id=VIAJERO).one()
+        profile.perfil_turistico = None
+        db.commit()
+    response = client.get(f'{API}/recommendations/me',headers=h())
+    assert response.status_code == 422
+    assert response.json()['detail']['code'] == 'TRAVELER_PROFILE_INCOMPLETE'
+    assert client.patch(f'{API}/users/{VIAJERO}/traveler-profile',json={'perfil_turistico':'naturalista'},headers=h()).status_code == 200

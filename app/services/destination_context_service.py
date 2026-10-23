@@ -1,127 +1,58 @@
-"""
-PROXVEL Backend - Contexto mensual de destinos (clima y afluencia de la tesis, Fase 4).
-
-Alimenta en la app: los filtros de clima/afluencia del buscador, la explicación del mes en el
-detalle y el calendario de 12 meses. Es solo lectura: no modifica el motor de recomendación.
-"""
-import logging
-
+"""Contexto histórico de la misma versión científica usada por el ranking V3."""
+from pandas import isna
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
 from app.models.destination_model import Destination
-from app.models.destination_month_context_model import DestinationMonthContext
-from app.services.recommendation_engine_v1 import (
-    _load_config,
-    _perfil_clima,
-    _perfil_tolerancia,
-)
+from app.services.thesis_engine import get_engine, normalize, MONTHS, VERSION
 
-logger = logging.getLogger(__name__)
+MONTH_NAMES = {i+1: name for i,name in enumerate(MONTHS)}
 
-MONTH_NAMES = {
-    1: "enero", 2: "febrero", 3: "marzo", 4: "abril", 5: "mayo", 6: "junio",
-    7: "julio", 8: "agosto", 9: "septiembre", 10: "octubre", 11: "noviembre", 12: "diciembre",
-}
+FAVORABLE = .70
+MODERADO = .50
 
-# Umbrales de la tesis (Fase 4, NB01): favorable >= 0.70, moderado >= 0.50.
-FAVORABLE = 0.70
-MODERADO = 0.50
+def climate_level(score):
+    if score is None: return None
+    return "Favorable" if score >= FAVORABLE else "Moderado" if score >= MODERADO else "Desfavorable"
 
+def _preferences(clima, tolerancia):
+    e = get_engine()
+    pref = normalize(clima or 'indiferente')
+    tol = normalize(tolerancia or 'media')
+    tol = {'bajo':'baja','medio':'media','alto':'alta','moderado':'media'}.get(tol,tol)
+    if pref not in e.climate or tol not in e.crowd:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=422, detail="Selecciona un clima y una tolerancia válidos.")
+    return pref, tol
 
-def climate_level(score: float | None) -> str | None:
-    if score is None:
-        return None
-    if score >= FAVORABLE:
-        return "Favorable"
-    if score >= MODERADO:
-        return "Moderado"
-    return "Desfavorable"
-
+def _month(did, month, pref, tol):
+    e = get_engine()
+    c = e.climate_data.loc[(pref, month, did)]
+    a = e.crowd_data.loc[(tol, month, did)]
+    cl, af = float(c.score_clima), float(a.score_aforo_personalizado)
+    return dict(month=month, month_name=MONTHS[month-1], has_data=True,
+        clima_score=cl, clima_nivel=climate_level(cl), clima_riesgo=None if isna(c.riesgo_climatico) else str(c.riesgo_climatico),
+        clima_explicacion=str(c.explicacion_clima), temp_prom=float((c.tmax_c+c.tmin_c)/2),
+        lluvia_mm=float(c.pp_mm), aforo_score=af, aforo_nivel=str(a.nivel_aforo),
+        aforo_explicacion=str(a.explicacion_aforo), visitantes_medios=float(a.visitantes_medios),
+        combined=.5*cl+.5*af)
 
 def month_context(db: Session, month: int) -> list[dict]:
-    """Clima (por preferencia) y afluencia de todos los destinos activos en un mes."""
-    rows = db.execute(
-        select(DestinationMonthContext)
-        .join(Destination, Destination.destination_id == DestinationMonthContext.destination_id)
-        .where(Destination.is_active.is_(True), DestinationMonthContext.month == month)
-        .order_by(DestinationMonthContext.destination_id)
-    ).scalars().all()
-    return [
-        {
-            "destination_id": c.destination_id,
-            "month": c.month,
-            "month_name": MONTH_NAMES.get(c.month),
-            "clima_por_preferencia": c.clima_por_preferencia or {},
-            "clima_score": c.clima_score,
-            "clima_nivel": c.clima_nivel or climate_level(c.clima_score),
-            "clima_riesgo": c.clima_riesgo,
-            "aforo_nivel": c.aforo_nivel,       # Bajo | Medio | Alto (visitantes del mes)
-            "aforo_score": c.aforo_score,
-            "visitantes_medios": c.visitantes_medios,
-        }
-        for c in rows
-    ]
-
+    e = get_engine()
+    active = set(db.scalars(select(Destination.destination_id).where(Destination.is_active.is_(True))).all())
+    result=[]
+    for did in e.ids:
+        if did not in active: continue
+        row=_month(did,month,'indiferente','media')
+        row.update(destination_id=did, clima_por_preferencia={p:float(e.climate[p][month-1,list(e.ids).index(did)]) for p in e.climate},
+            engine_version=VERSION)
+        result.append(row)
+    return result
 
 def calendar(db: Session, destination_id: str, clima: str | None, tolerancia: str | None) -> dict | None:
-    """
-    Los 12 meses de un destino con el clima según la preferencia y el aforo según la tolerancia.
-    El «mejor» y «peor» mes usan el mismo contexto C del motor, así que coinciden con el
-    `best_month` que ve el usuario en sus recomendaciones.
-    """
-    dest = db.scalar(select(Destination).where(Destination.destination_id == destination_id))
-    if dest is None:
-        return None
-
-    pref = _perfil_clima({"clima_preferido": clima})
-    tol = _perfil_tolerancia({"tolerancia_multitudes": tolerancia})
-    cfg = _load_config(db)
-    w_clima, w_aforo = cfg["w_clima"], cfg["w_aforo"]
-
-    ctxs = {
-        c.month: c
-        for c in db.scalars(
-            select(DestinationMonthContext).where(DestinationMonthContext.destination_id == destination_id)
-        ).all()
-    }
-    months = []
-    for m in range(1, 13):
-        c = ctxs.get(m)
-        if c is None:
-            months.append({"month": m, "month_name": MONTH_NAMES[m], "has_data": False})
-            continue
-        clima_score = (c.clima_por_preferencia or {}).get(pref, c.clima_score)
-        aforo_score = (c.aforo_por_tolerancia or {}).get(tol, c.aforo_score)
-        combined = None
-        if clima_score is not None and aforo_score is not None:
-            combined = round(w_clima * clima_score + w_aforo * aforo_score, 4)
-        months.append({
-            "month": m,
-            "month_name": MONTH_NAMES[m],
-            "has_data": True,
-            "clima_score": clima_score,
-            "clima_nivel": climate_level(clima_score),
-            "clima_riesgo": c.clima_riesgo,
-            "clima_explicacion": c.clima_explicacion,
-            "temp_prom": c.temp_prom,
-            "lluvia_mm": c.pp,
-            "aforo_score": aforo_score,
-            "aforo_nivel": c.aforo_nivel,
-            "aforo_explicacion": c.aforo_explicacion,
-            "visitantes_medios": c.visitantes_medios,
-            "combined": combined,
-        })
-
-    scored = [m for m in months if m.get("combined") is not None]
-    best = max(scored, key=lambda m: m["combined"])["month"] if scored else None
-    worst = min(scored, key=lambda m: m["combined"])["month"] if scored else None
-    return {
-        "destination_id": destination_id,
-        "destination": dest.destination,
-        "preference": pref,
-        "tolerance": tol,
-        "best_month": best,
-        "worst_month": worst,
-        "months": months,
-    }
+    dest=db.scalar(select(Destination).where(Destination.destination_id==destination_id, Destination.is_active.is_(True)))
+    if dest is None or destination_id not in get_engine().ids: return None
+    pref,tol=_preferences(clima,tolerancia)
+    months=[_month(destination_id,m,pref,tol) for m in range(1,13)]
+    return dict(destination_id=destination_id,destination=dest.destination,preference=pref,tolerance=tol,
+        engine_version=VERSION,best_month=max(months,key=lambda m:m['combined'])['month'],
+        worst_month=min(months,key=lambda m:m['combined'])['month'],months=months)

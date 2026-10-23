@@ -88,15 +88,18 @@ def generate_personal(db: Session, user_id: str) -> None:
     now = _now()
     profile = db.scalar(select(TravelerProfile).where(TravelerProfile.user_id == user_id))
 
+    from app.services.thesis_engine import get_engine
+    ready = profile is not None and profile.perfil_turistico in get_engine().profile_weights and bool(profile.intereses)
+
     # 1) Perfil listo
-    if profile is not None:
+    if ready:
         _create(db, user_id, "perfil_listo", "Tu perfil está listo",
                 "Ya puedes ver recomendaciones hechas a tu medida en «Para ti».",
                 route="/main", dedupe_key="perfil_listo")
 
     # 2) Mejor mes de los favoritos
     # A personalized season claim requires actual traveler preferences.
-    favs = db.scalars(select(Favorite).where(Favorite.user_id == user_id)).all() if profile is not None else []
+    favs = db.scalars(select(Favorite).where(Favorite.user_id == user_id)).all() if ready else []
     for fav in favs:
         dest = db.scalar(select(Destination).where(
             Destination.destination_id == fav.destination_id, Destination.is_active.is_(True)))

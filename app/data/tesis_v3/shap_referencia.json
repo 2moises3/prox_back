@@ -1,0 +1,12 @@
+{
+  "metodo": "Shapley interventional exacto para función lineal",
+  "n_fondo": 20000,
+  "semilla": 42,
+  "media_fondo": [
+    0.4554781685498775,
+    0.8673639249999944,
+    0.5513947999999957
+  ],
+  "valor_base": 0.518291977299876,
+  "error_aditividad_max": 4.440892098500626e-16
+}

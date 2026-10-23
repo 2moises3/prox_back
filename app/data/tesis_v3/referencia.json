@@ -1,0 +1,388 @@
+{
+  "_LEEME": [
+    "Distribuciones de referencia para la generacion Monte Carlo de perfiles de viajero.",
+    "",
+    "CADA BLOQUE TIENE UN CAMPO 'fuente' QUE HAY QUE COMPLETAR ANTES DE DEFENDER.",
+    "En la version anterior de la Fase 3 estos porcentajes estaban escritos a mano",
+    "dentro del notebook, sin ninguna referencia. Varios coinciden con el Perfil del",
+    "Vacacionista Nacional de PROMPERU, pero mientras no se cite la publicacion y el",
+    "anho, son supuestos del autor y asi deben declararse.",
+    "",
+    "Dos opciones legitimas, ninguna intermedia:",
+    "  (a) Se citan: rellenar 'fuente' con publicacion, anho y tabla o pagina.",
+    "  (b) Son supuestos: poner fuente = 'supuesto del autor' y declararlo en la",
+    "      memoria como limitacion, junto con el analisis de sensibilidad.",
+    "",
+    "Los perfiles simulados NO son evidencia de que la poblacion real se comporte asi.",
+    "Sirven para probar la consistencia interna del recomendador, nada mas."
+  ],
+  "perfil_turistico": {
+    "fuente": "supuesto del autor: personas del sistema derivadas de preferencias declaradas, NO segmentos oficiales de PROMPERU",
+    "_nota": [
+      "Ninguna fuente peruana publica una segmentacion en estos siete tipos. Se conservan como",
+      "personas del sistema, que es lo que son, y se declara asi en la memoria.",
+      "El segmento con respaldo oficial es el grupo de viaje (bloque grupo_viaje), que si publica",
+      "PROMPERU y se genera como dimension aparte. No deben presentarse como equivalentes.",
+      "Los siete pesos entran en el analisis de sensibilidad."
+    ],
+    "distribucion": {
+      "cultural": 22,
+      "naturalista": 18,
+      "familiar": 15,
+      "economico_mochilero": 15,
+      "gastronomico": 10,
+      "aventurero": 10,
+      "urbano_recreativo": 10
+    }
+  },
+  "presupuesto_rango": {
+    "fuente": "PROMPERU, Perfil del Vacacionista Nacional 2019: distribucion del gasto por persona durante el viaje en siete rangos",
+    "_nota": [
+      "Rangos publicados: menos de S/100 3 %; 100-199 19 %; 200-299 18 %; 300-399 13 %;",
+      "400-499 11 %; 500-599 8 %; 600 o mas 28 %.",
+      "El modelo necesita tres niveles, asi que se agregan: bajo < S/300 = 40 %,",
+      "medio S/300-599 = 32 %, alto >= S/600 = 28 %. La AGREGACION es propia; los intervalos",
+      "son oficiales y no deben atribuirse a PROMPERU como categorias originales."
+    ],
+    "unidad": "soles peruanos por viaje",
+    "distribucion": {
+      "bajo": 40,
+      "medio": 32,
+      "alto": 28
+    },
+    "rangos_soles": {
+      "bajo": [
+        200,
+        800
+      ],
+      "medio": [
+        800,
+        2500
+      ],
+      "alto": [
+        2500,
+        6000
+      ]
+    },
+    "_uso_actual": "La columna heredada presupuesto_rango selecciona el intervalo de gasto diario del generador; no clasifica presupuesto_soles, que es el total del viaje. Las proporciones 40/32/28 se reutilizan como supuesto de adaptación, no como distribución diaria observada por PROMPERU. Se preservan claves y valores para compatibilidad con NB02 y NB03."
+  },
+  "grupo_viaje": {
+    "fuente": "PROMPERU, Perfil del Viajero Nacional 2019, segmento vacacionista (3 266 encuestas): grupo de viaje. Verificado en linea el 06-10-2026",
+    "_nota": [
+      "Es la unica segmentacion del viajero con respaldo oficial. Se genera como dimension",
+      "descriptiva, independiente del tipo de viajero, y no interviene en el ranking.",
+      "Contraste: PROMPERU 2023 (p. 21) reporta grupo familiar directo 40 %, pareja 29 %,",
+      "amigos o familiares sin ninos 17 %, solo 9 % y amigos o familiares con ninos 5 %. Se adopta",
+      "la medicion de 2019 porque es la que publica el desglose completo usado en el resto del",
+      "archivo; la diferencia entre anios conviene declararla."
+    ],
+    "distribucion": {
+      "amigos_o_familiares_sin_ninos": 34,
+      "grupo_familiar_directo": 25,
+      "en_pareja": 18,
+      "solo": 13,
+      "amigos_o_familiares_con_ninos": 10
+    }
+  },
+  "presupuesto_por_tipo": {
+    "fuente": "supuesto del autor, derivado de la definicion del tipo economico_mochilero",
+    "_nota": [
+      "Distribucion del rango de presupuesto CONDICIONADA al tipo de viajero. El generador",
+      "sortea primero el tipo y despues el presupuesto con esta tabla.",
+      "La unica restriccion de definicion es que un economico_mochilero no tiene presupuesto alto.",
+      "Los demas tipos comparten una misma distribucion: diferenciarlos mas seria inventar datos.",
+      "Los valores estan calculados para que la distribucion total siga siendo 40 / 32 / 28,",
+      "que es la de PROMPERU 2019 declarada en presupuesto_rango y la que verifica la seccion 5.",
+      "Comprobacion: bajo 0.15*70 + 0.85*34.7 = 40.0; medio 0.15*30 + 0.85*32.36 = 32.0;",
+      "alto 0.85*32.94 = 28.0."
+    ],
+    "economico_mochilero": {
+      "bajo": 70,
+      "medio": 30,
+      "alto": 0
+    },
+    "_resto_de_tipos": {
+      "bajo": 34.7,
+      "medio": 32.36,
+      "alto": 32.94
+    }
+  },
+  "gasto_diario_soles": {
+    "fuente": "PROMPERU, Perfil del Vacacionista Nacional 2023, p. 26: gasto promedio diario por persona S/ 157 y gasto promedio por viaje S/ 643 (base: 832 vacacionistas)",
+    "_nota": [
+      "El presupuesto total se calcula como gasto por dia x dias de viaje, en lugar de sortearse",
+      "sin relacion con la duracion. Asi se evitan perfiles como S/206 para 5 dias.",
+      "Los limites salen de los rangos de gasto POR VIAJE de PROMPERU 2019 (<300, 300-599, >=600),",
+      "divididos por la permanencia media y escalados por la variacion del gasto diario entre 2019",
+      "y 2023 (S/ 106 -> S/ 157, factor 1.48), lo que da cortes diarios en torno a S/ 105 y S/ 211.",
+      "El tope del rango alto se fijo de modo que el promedio ponderado por 40/32/28 se acerque al",
+      "gasto diario de 2023: 0.40*72.5 + 0.32*158 + 0.28*270.5 = 155. La agregacion y el tope son",
+      "del autor; los intervalos de partida son oficiales. Todo ello entra en el analisis de",
+      "sensibilidad. rangos_soles del bloque presupuesto_rango queda como referencia descriptiva",
+      "y ya no se usa para generar.",
+      "Contraste: la ETTI I-2025 (p. 20) reporta S/ 527 por turista interno, S/ 610 con alojamiento",
+      "pagado y S/ 627 al viajar fuera de la region. Se adopta la cifra de PROMPERU porque su universo",
+      "es el vacacionista, que es el usuario al que apunta el sistema."
+    ],
+    "rangos": {
+      "bajo": [
+        40,
+        105
+      ],
+      "medio": [
+        105,
+        211
+      ],
+      "alto": [
+        211,
+        330
+      ]
+    }
+  },
+  "duracion_viaje": {
+    "fuente": "PROMPERU, Perfil del Viajero Nacional 2019, segmento vacacionista (3 266 encuestas): noches de permanencia en el lugar visitado",
+    "_nota_calibracion": [
+      "Distribucion publicada: de 1 a 3 noches 50 %, de 4 a 7 noches 41 %, de 8 a 14 noches 6 %",
+      "y de 15 noches a mas 3 %; promedio 4 noches, mediana 3.",
+      "Los dos ultimos tramos se agregan en 'larga' (9 %) porque el modelo trabaja con tres niveles.",
+      "Media resultante: 0.50*2 + 0.41*5.5 + 0.09*11.5 = 4.3 dias, coherente con las 4 noches.",
+      "Corroboran PROMPERU 2023 (p. 25) con 4 noches y la ETTI I-2025 (p. 22) con 4 noches en",
+      "alojamiento pagado, 3 dentro de la propia region y 5 fuera de ella.",
+      "Verificado en linea el 06-10-2026 contra el PDF oficial de PROMPERU 2019."
+    ],
+    "unidad": "dias",
+    "distribucion": {
+      "corta": 50,
+      "media": 41,
+      "larga": 9
+    },
+    "rangos_dias": {
+      "corta": [
+        1,
+        3
+      ],
+      "media": [
+        4,
+        7
+      ],
+      "larga": [
+        8,
+        15
+      ]
+    }
+  },
+  "motivo_viaje": {
+    "fuente": "MINCETUR, Encuesta Trimestral de Turismo Interno, I Trimestre 2025, p. 11 (2 435 turistas encuestados, margen +/- 1,2 %)",
+    "_nota": [
+      "Valores publicados: visitar familiares o amigos 53,7 %; vacaciones, recreacion u ocio 30,9 %;",
+      "negocios o motivos profesionales 8,9 %; salud y atencion medica 3,5 %; educacion y formacion",
+      "1,4 %; otros motivos 1,6 % (incluye religion y peregrinacion).",
+      "Dos ajustes, ambos declarados:",
+      "1. La ETTI no separa vacaciones de recreacion. El 30,9 % se reparte 73/27 entre ambas,",
+      "   proporcion heredada de la version anterior del archivo y que es un supuesto del autor.",
+      "2. 'Salud y atencion medica' (3,5 %) no existe en la taxonomia del perfil, asi que se excluye",
+      "   y el resto se renormaliza a 100.",
+      "El universo de la ETTI es TODO el turismo interno, no solo el vacacionista: por eso la visita a",
+      "familiares domina. El motivo de viaje se registra en el perfil y no interviene en el ranking."
+    ],
+    "distribucion": {
+      "vacaciones": 23.4,
+      "recreacion": 8.6,
+      "visita_familiares_amigos": 55.6,
+      "academico": 1.5,
+      "negocios": 9.2,
+      "religioso": 1.7
+    }
+  },
+  "tolerancia_multitudes": {
+    "fuente": "supuesto del autor: probabilidades de escenarios, sin estimación poblacional verificada",
+    "distribucion": {
+      "baja": 32,
+      "media": 48,
+      "alta": 20
+    },
+    "_nota": "Sin aspecto ABSA que la alimente: clima y aforo salieron de la taxonomia V8. Solo puede atenderse en Fase 4 con datos externos."
+  },
+  "preferencia_climatica": {
+    "fuente": "supuesto del autor: probabilidades de escenarios, sin estimación poblacional verificada",
+    "distribucion": {
+      "templado": 39,
+      "calido": 22,
+      "frio": 15,
+      "seco": 14,
+      "indiferente": 10
+    },
+    "_nota": "Misma situacion que tolerancia_multitudes: se guarda en el perfil pero la Fase 3 no la usa."
+  },
+  "intereses": {
+    "fuente": "PROMPERU, Perfil del Vacacionista Nacional 2023, p. 27 (actividades realizadas durante el viaje, base 832) para ocho de los trece intereses; los cinco restantes son supuesto del autor",
+    "_nota": "Probabilidad marginal de que un viajero declare cada interes. No suman 100: un mismo viajero puede declarar varios. PROMPERU reporta una media de 4 actividades por viaje.",
+    "_correspondencia_promperu": {
+      "naturaleza": "Turismo de naturaleza, 54 %",
+      "urbano": "Turismo urbano, 50 %",
+      "gastronomia": "Turismo gastronomico, 47 %",
+      "cultura": "Turismo cultural, 46 %",
+      "aventura": "Turismo de aventura, 27 %",
+      "relax": "Bienestar, 23 %",
+      "rural": "Turismo comunitario, 13 %",
+      "playa": "Turismo de sol y playa, 8 % (el informe advierte que en 2023 se vio desplazado por el Fenomeno del Nino)",
+      "_sin_equivalente_en_el_informe": "historia, familiar, fotografia, academico y montanismo: no existe una actividad equivalente, se mantienen como supuesto del autor",
+      "_actividades_sin_equivalente_en_la_taxonomia": "Compras 36 %, Esparcimiento 30 %, Diversion nocturna 25 % y Turismo religioso 10 % no tienen interes correspondiente en el vocabulario de destinos",
+      "_advertencia": "El informe mide actividades REALIZADAS, no intereses DECLARADOS antes del viaje. Se usan como mejor aproximacion disponible y asi debe declararse en la memoria.",
+      "_por_que_no_se_usa_la_etti": "La ETTI I-2025 (p. 16) publica otras cifras para todo el turismo interno: urbanas 84,1 %, naturaleza 41,4 %, sol y playa 24,8 %, culturales 14,3 %, diversion 13,8 % y aventura 12,7 %. La diferencia se explica por el universo: la ETTI incluye los viajes por visita a familiares y por trabajo, mientras que PROMPERU mide solo al vacacionista, que es el usuario al que apunta el sistema. La discrepancia conviene declararla como limitacion."
+    },
+    "distribucion": {
+      "cultura": 46,
+      "naturaleza": 54,
+      "gastronomia": 47,
+      "aventura": 27,
+      "urbano": 50,
+      "rural": 13,
+      "historia": 16,
+      "fotografia": 8,
+      "relax": 23,
+      "familiar": 16,
+      "academico": 5,
+      "playa": 8,
+      "montanismo": 4
+    },
+    "_supuestos_del_autor": [
+      "historia 16: el informe la incluye dentro de turismo cultural, sin dato propio.",
+      "familiar 16: sin actividad equivalente. El valor debe ser mayor que el 15 % del tipo familiar,",
+      "porque la regla de coherencia exige que ese tipo declare el interes.",
+      "fotografia 8, academico 5 y montanismo 4: sin dato en el informe."
+    ],
+    "_intereses_validos": "Deben coincidir con el vocabulario de la columna 'intereses' del registro maestro de destinos, o el emparejamiento tematico falla en silencio."
+  },
+  "pesos_por_perfil": {
+    "fuente": "supuesto del autor, derivado de la definicion de cada tipo de perfil",
+    "_nota": "Importancia relativa que cada tipo de viajero da a los aspectos de CALIDAD. Solo se incluyen los aspectos con precision de deteccion >= 0.70 segun validacion_diccionario_deteccion_v2.csv. Se normalizan a 1 en el notebook.",
+    "_cambio_06-10-2026": [
+      "La terna pasa de limpieza / atencion_servicio / atractivos a costos / atencion_servicio /",
+      "atractivos. Motivo: con el gold consolidado el 05-10-2026 y el diccionario v2 reconstruido",
+      "sobre el, las precisiones de deteccion son atractivos 0.984, costos 0.736, atencion 0.731,",
+      "limpieza 0.649, gastronomia 0.578, accesibilidad 0.539, seguridad 0.366 y alojamiento 0.140.",
+      "Limpieza deja de superar el umbral de 0.70 fijado antes de construir el ranking y costos pasa",
+      "a superarlo. El criterio no cambio; cambio la medicion.",
+      "PENDIENTE DE COMPROBAR con la matriz nueva: en la version anterior, costos tenia una desviacion",
+      "entre destinos de solo 0.036, es decir, no ordenaba. Si eso se repite, costos sirve para",
+      "justificar pero no para ordenar, y hay que decirlo en la memoria. Lo mide el NB02 de la Fase 3",
+      "en fase3_dispersion_aspectos.csv."
+    ],
+    "_sobre_la_dimension_presupuesto": "Distinta del aspecto costos. El aspecto mide el SENTIMIENTO sobre los precios; la dimension presupuesto del perfil se compara contra la tarifa oficial de entrada, que desde el 06-10-2026 esta en data/tarifas_destinos.csv. Son dos senales distintas y no deben mezclarse.",
+    "_por_que_atractivos_pesa_poco": "Los catorce destinos puntuan entre 0.929 y 0.981 en atractivos (desviacion 0.0146): el aspecto no ordena nada. Se conserva con peso bajo como piso de calidad, no como criterio de ranking.",
+    "aspectos_del_modelo": [
+      "costos",
+      "atencion_servicio",
+      "atractivos"
+    ],
+    "_criterio_de_los_pesos": [
+      "Cada peso se sigue de la definicion del tipo y es un supuesto del autor:",
+      "al economico_mochilero le pesa el costo; al cultural y al gastronomico, la atencion;",
+      "al naturalista y al aventurero, el atractivo; el familiar reparte entre costo y atencion.",
+      "Los siete vectores entran en el analisis de sensibilidad."
+    ],
+    "por_perfil": {
+      "cultural": {
+        "costos": 0.25,
+        "atencion_servicio": 0.45,
+        "atractivos": 0.3
+      },
+      "naturalista": {
+        "costos": 0.25,
+        "atencion_servicio": 0.3,
+        "atractivos": 0.45
+      },
+      "familiar": {
+        "costos": 0.4,
+        "atencion_servicio": 0.4,
+        "atractivos": 0.2
+      },
+      "economico_mochilero": {
+        "costos": 0.55,
+        "atencion_servicio": 0.25,
+        "atractivos": 0.2
+      },
+      "gastronomico": {
+        "costos": 0.35,
+        "atencion_servicio": 0.45,
+        "atractivos": 0.2
+      },
+      "aventurero": {
+        "costos": 0.25,
+        "atencion_servicio": 0.3,
+        "atractivos": 0.45
+      },
+      "urbano_recreativo": {
+        "costos": 0.35,
+        "atencion_servicio": 0.4,
+        "atractivos": 0.25
+      }
+    }
+  },
+  "reglas_coherencia": {
+    "fuente": "supuesto del autor, derivado del nombre de cada tipo de perfil: ni el PPI ni la memoria definen los siete tipos",
+    "_nota": "Restricciones que un perfil debe cumplir para ser verosimil. Sustituyen el juicio de un experto sobre la coherencia interna de los perfiles simulados. Las de 'definicion' se siguen del propio nombre del tipo y deben cumplirse en el 100 % de los perfiles.",
+    "interes_definitorio": {
+      "_nota": "Un perfil del tipo debe declarar al menos uno de estos intereses. Lista vacia: el tipo se define por el presupuesto, no por un interes.",
+      "cultural": [
+        "cultura",
+        "historia"
+      ],
+      "naturalista": [
+        "naturaleza"
+      ],
+      "gastronomico": [
+        "gastronomia"
+      ],
+      "aventurero": [
+        "aventura"
+      ],
+      "familiar": [
+        "familiar"
+      ],
+      "urbano_recreativo": [
+        "urbano"
+      ],
+      "economico_mochilero": []
+    },
+    "presupuesto_incompatible": {
+      "_nota": "Rangos de presupuesto que contradicen la definicion del tipo.",
+      "economico_mochilero": [
+        "alto"
+      ]
+    },
+    "gasto_diario_minimo_soles": {
+      "fuente": "PENDIENTE",
+      "_nota": "Regla de plausibilidad, no de definicion: sin una fuente del gasto diario minimo de un viajero nacional no hay umbral defendible, asi que se reportan varios y no se fija criterio de aceptacion.",
+      "umbrales_evaluados": [
+        50,
+        80,
+        100
+      ]
+    }
+  },
+  "parametros_generacion": {
+    "n_perfiles": 3000,
+    "random_state": 42,
+    "tolerancia_montecarlo_pp": 3.0,
+    "_nota_tolerancia": "Desviacion maxima admitida, en puntos porcentuales, entre la distribucion generada y la de referencia."
+  },
+  "modelo_afinidad": {
+    "_nota": "La afinidad combina intereses y calidad ABSA. La exposición y variación entre perfiles se describen en NB02/NB03; no se fija aquí una cifra de destinos dominante porque depende de la configuración vigente.",
+    "alpha_absa": 0.25,
+    "_alpha": "Peso del componente ABSA. El resto (1-alpha) va al emparejamiento de intereses.",
+    "top_k": 3,
+    "_top_k": "La salida es Top-3, no Top-1: la fragilidad del primer puesto es alta.",
+    "umbral_recomendado": 0.6,
+    "umbral_parcialmente": 0.4,
+    "umbral_empate_pct": 3.0,
+    "fuente": "supuesto del autor: configuración operativa de afinidad, top k y umbrales; valores examinados mediante sensibilidad, sin óptimo externo demostrado"
+  },
+  "_alcance_evaluacion": {
+    "procedimiento": "escenarios sintéticos sin panel de relevancia",
+    "autorizacion": "comunicada por el autor tras consulta con su profesor de tesis",
+    "limite": "No demuestra relevancia percibida ni representatividad de turistas reales",
+    "fecha_revision": "2026-10-21"
+  }
+}

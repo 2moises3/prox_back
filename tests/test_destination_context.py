@@ -99,7 +99,7 @@ def test_calendario_destino_inexistente(client):
 def test_el_mejor_mes_del_calendario_coincide_con_el_del_motor(client, clima, tol):
     """El calendario y las recomendaciones deben hablar del mismo «mejor mes»."""
     cal = client.get(f"{API}/destinations/{DEST}/calendar", params={"clima": clima, "tolerancia": tol}).json()["data"]
-    perfil = {"intereses": ["cultura", "historia"], "clima_preferido": clima, "tolerancia_multitudes": tol}
+    perfil = {"perfil_turistico": "cultural", "intereses": ["cultura", "historia"], "clima_preferido": clima, "tolerancia_multitudes": tol}
     recs = generate_recommendations(perfil, limit=14, month=7)
     mine = next(r for r in recs if r["destination_id"] == DEST)
     assert mine["best_month"] == cal["best_month"]

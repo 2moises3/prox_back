@@ -40,6 +40,8 @@ async def _read_file(import_type: str, file: UploadFile) -> bytes:
 
 
 def _run(db: Session, import_type: str, content: bytes, **kw) -> dict:
+    if import_type != "catalog":
+        raise HTTPException(status_code=409, detail="El motor V3 utiliza un snapshot científico validado. Sus datos no se sobrescriben desde el dashboard.")
     try:
         return import_service.run_import(db, import_type, content, **kw)
     except (ValueError, UnicodeDecodeError) as e:

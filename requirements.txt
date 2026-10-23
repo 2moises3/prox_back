@@ -22,3 +22,7 @@ bcrypt==3.2.2
 
 # Lectura de Excel (.xlsx) en los importadores del dashboard
 openpyxl==3.1.5
+
+# Núcleo científico V3 (mismo ordenamiento NumPy que la referencia)
+numpy==2.4.6
+pandas==3.0.3

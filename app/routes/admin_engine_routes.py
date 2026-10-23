@@ -17,7 +17,13 @@ router = APIRouter(prefix="/admin/engine", tags=["Admin - Motor"])
 
 def _status_payload(db: Session) -> dict:
     dests = engine_admin_service.universe(db)
+    from app.services.thesis_engine import get_engine, VERSION
+    engine = get_engine()
     return {
+        "version": VERSION,
+        "read_only": True,
+        "aspects": engine.aspects,
+        "profile_weights": engine.profile_weights,
         "config": engine_admin_service.get_config(db),
         "defaults": engine_admin_service.get_defaults(),
         "destinations": dests,

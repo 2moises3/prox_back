@@ -60,6 +60,9 @@ class RecommendationAspectContribution(BaseModel):
 class RecommendationExplanation(BaseModel):
     summary: str
     top_aspects: list[RecommendationAspectContribution]
+    shap_base: float | None = None
+    shap_values: dict[str, float] | None = None
+    shap_method: str | None = None
 
 class RecommendationMeItem(BaseModel):
     destination_id: str
@@ -69,6 +72,14 @@ class RecommendationMeItem(BaseModel):
     category: str | None = None
     cover_image_url: str | None = None
     rating: float | None = None
+    label_code: str | None = None
+    perfil_turistico: str | None = None
+    affinity_f3: float | None = None
+    coverage: float | None = None
+    quality_absa: float | None = None
+    climate_score: float | None = None
+    crowd_score: float | None = None
+    score_semantics: str | None = None
     compatibility_score: float
     compatibility_percent: int
     label: str | None = None

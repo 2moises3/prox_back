@@ -47,23 +47,27 @@ def get_my_recommendations(
             detail="El usuario no cuenta con un perfil de viaje. Completa el Onboarding primero."
         )
 
-    # 2. Computar recomendaciones usando motor V1 (Fase 3+4, 10 destinos)
-    results = recommendation_engine_v1.generate_recommendations(
-        user_profile=profile.model_dump(),
-        limit=limit,
-        month=month,
-        region=region,
-    )
+    try:
+        results = recommendation_engine_v1.generate_recommendations(
+            user_profile=profile.model_dump(), limit=limit, month=month, region=region,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail={
+            "code": "TRAVELER_PROFILE_INCOMPLETE",
+            "message": "Completa tu tipo de viajero y preferencias para recibir recomendaciones.",
+        }) from exc
+    except (RuntimeError, OSError) as exc:
+        raise HTTPException(status_code=503, detail="No pudimos calcular tus recomendaciones. Intenta nuevamente.") from exc
 
     # 3. Retornar contrato estricto
     return RecommendationMeResponse(
         success=True,
         message="Recomendaciones personalizadas generadas correctamente",
         engine={
-            "source": "engine_v1",
-            "version": "1.0",
+            "source": "tesis_v3",
+            "version": "2026-10-22",
             "is_final_model": True,
-            "metrics_status": "produccion"
+            "metrics_status": "evaluacion_sintetica"
         },
         data=results
     )

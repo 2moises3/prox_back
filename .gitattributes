@@ -1,0 +1,2 @@
+# El manifiesto científico verifica los bytes originales en todas las plataformas.
+app/data/tesis_v3/** -text whitespace=cr-at-eol

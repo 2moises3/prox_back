@@ -1,0 +1,37 @@
+{
+  "fecha": "2026-10-22",
+  "version": "tesis-v3-20261022",
+  "peso_contextual": 0.3,
+  "archivos": [
+    {
+      "archivo": "matriz.csv",
+      "fuente": "ABSA_Turismo_Fase3_V3/data/matriz_destino_aspecto_sentimiento.csv",
+      "sha256": "1ae58f8c038686804ca5f3df9ca2d27dcf9e2e43eef79e456bad9c3ecb08670d"
+    },
+    {
+      "archivo": "destinos.csv",
+      "fuente": "ABSA_Turismo_Fase3_V3/data/registro_maestro_centros_turisticos.csv",
+      "sha256": "7b84fc5e79724ed2f17a8ddf3c5291d07c55d06e1c90eb5a2a277a13a9a94f27"
+    },
+    {
+      "archivo": "referencia.json",
+      "fuente": "ABSA_Turismo_Fase3_V3/data/distribuciones_referencia.json",
+      "sha256": "84216e793ce067cd46754813a459a4c29b2355e8cf5291a0adc4d0d51cb42996"
+    },
+    {
+      "archivo": "clima.csv",
+      "fuente": "ABSA_Turismo_Fase4_V3/outputs/clima/clima_scores.csv",
+      "sha256": "627abda4e26f31f7891ca28eafb8e3f488712ec4a4468ba48eaff7d63e98ea5a"
+    },
+    {
+      "archivo": "aforo.csv",
+      "fuente": "ABSA_Turismo_Fase4_V3/outputs/aforo/aforo_scores.csv",
+      "sha256": "8df65aa1839fce8445d91252d0c85bb2acfa7e6c408c7d17b46276c5b0895540"
+    },
+    {
+      "archivo": "shap_referencia.json",
+      "fuente": "ABSA_Turismo_Fase4_V3/outputs/final/shap_referencia.json",
+      "sha256": "20816884319374c92d363fefc09cb445feb2cfb4b56e90c9f69b1caaf3f826d3"
+    }
+  ]
+}

@@ -82,10 +82,10 @@ def test_parametros_solo_super_admin_y_validados(client):
     assert client.put(f"{API}/admin/engine/config", json={**nuevo, "w_aforo": 0.5}, headers=hs()).status_code == 422
     assert client.put(f"{API}/admin/engine/config", json={**nuevo, "alpha_absa": 1.5}, headers=hs()).status_code == 422
     r = client.put(f"{API}/admin/engine/config", json=nuevo, headers=hs())
-    assert r.status_code == 200
-    assert r.json()["data"]["config"]["alpha_absa"] == 0.4
+    assert r.status_code == 409
+    assert client.get(f"{API}/admin/engine", headers=ha()).json()["data"]["config"]["alpha_absa"] == .25
     r = client.post(f"{API}/admin/engine/config/reset", headers=hs())
-    assert r.json()["data"]["config"]["alpha_absa"] == 0.25
+    assert r.status_code == 409
 
 
 def test_sacar_y_volver_a_meter_destino_del_motor(client, monkeypatch):
@@ -185,3 +185,11 @@ def test_actividad_reciente_y_prioridades(client):
 def test_detalle_sin_mes_usa_el_mes_actual(client):
     ctx = client.get(f"{API}/destinations/{DEST}").json()["data"]["context"]
     assert ctx["weather_category"] is not None and ctx["crowd_level"] is not None
+
+
+def test_snapshot_cientifico_no_se_sobrescribe_ni_se_elimina(client):
+    before = client.get(f"{API}/destinations/{DEST}").json()['data']['aspect_scores']
+    assert client.patch(f"{API}/admin/destinations/{DEST}/absa-scores", json={'costos':.01},headers=ha()).status_code == 409
+    assert client.delete(f"{API}/admin/destinations/{DEST}",headers=ha()).status_code == 409
+    after = client.get(f"{API}/destinations/{DEST}").json()['data']['aspect_scores']
+    assert before == after

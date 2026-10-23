@@ -15,6 +15,8 @@ class TravelerProfile(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.user_id"), index=True)
     
+    perfil_turistico: Mapped[str | None] = mapped_column(String)
+
     presupuesto: Mapped[str | None] = mapped_column(String)
     dias_viaje: Mapped[int | None] = mapped_column(Integer)
     clima_preferido: Mapped[str | None] = mapped_column(String)
