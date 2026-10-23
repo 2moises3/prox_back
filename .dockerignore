@@ -17,3 +17,6 @@ audit*.py
 test_*.py
 test_*.txt
 download_images.py
+
+# Los entornos locales se pasan en runtime, nunca se copian a la imagen.
+.env.*
