@@ -72,10 +72,19 @@ _AVATAR_SIGNATURES = {
 
 def _is_valid_avatar(content: bytes, content_type: str | None) -> bool:
     """Tipo permitido y firma real del archivo (no basta con el Content-Type del cliente)."""
-    sigs = _AVATAR_SIGNATURES.get((content_type or "").lower())
+    norm_type = (content_type or "").lower().split(";")[0].strip()
+    if not norm_type or norm_type in ("application/octet-stream", "binary/octet-stream", "image/jpg"):
+        if content.startswith(b"\x89PNG\r\n\x1a\n"):
+            norm_type = "image/png"
+        elif content.startswith(b"\xff\xd8\xff"):
+            norm_type = "image/jpeg"
+        elif content.startswith(b"RIFF") and len(content) >= 12 and content[8:12] == b"WEBP":
+            norm_type = "image/webp"
+
+    sigs = _AVATAR_SIGNATURES.get(norm_type)
     if not sigs or not any(content.startswith(sig) for sig in sigs):
         return False
-    return content_type.lower() != "image/webp" or content[8:12] == b"WEBP"
+    return norm_type != "image/webp" or (len(content) >= 12 and content[8:12] == b"WEBP")
 
 
 @router.post("/{user_id}/avatar", response_model=dict, summary="Subir imagen de perfil")
