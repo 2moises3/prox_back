@@ -377,3 +377,16 @@ def test_admin_radius_25km_and_one_minute_dwell(db_session):
         catalog.geofence_radius_meters = 250
         catalog.min_dwell_minutes = 20
         db_session.commit()
+
+
+def test_charts_data_precision(db_session):
+    from app.services.admin_metrics_service import get_charts_data
+    data = get_charts_data(db_session)
+    assert 'user_growth' in data
+    assert 'user_growth_daily' in data
+    assert 'user_metrics' in data
+    assert len(data['user_growth_daily']) == 31  # 30 days + today
+    assert 'total' in data['user_metrics']
+    assert 'new_today' in data['user_metrics']
+    assert 'new_this_week' in data['user_metrics']
+    assert 'new_this_month' in data['user_metrics']

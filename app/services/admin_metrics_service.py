@@ -90,21 +90,88 @@ def get_overview(db: Session) -> dict:
 
 
 def get_charts_data(db: Session) -> dict:
-    """Construye datos formateados para los gráficos de la interfaz."""
+    """Construye datos formateados para los gráficos de la interfaz con alta precisión."""
     from app.models.tourism_catalog_model import TourismCatalog
 
-    # Crecimiento de usuarios por mes
-    # Usamos to_char que es nativo de PostgreSQL
+    is_sqlite = (getattr(getattr(db, "bind", None), "dialect", None) and db.bind.dialect.name == "sqlite")
+    if is_sqlite:
+        date_expr_month = func.strftime('%Y-%m', User.created_at)
+        date_expr_day = func.strftime('%Y-%m-%d', User.created_at)
+        rev_date_expr_month = func.strftime('%Y-%m', Review.created_at)
+    else:
+        date_expr_month = func.to_char(User.created_at, 'YYYY-MM')
+        date_expr_day = func.to_char(User.created_at, 'YYYY-MM-DD')
+        rev_date_expr_month = func.to_char(Review.created_at, 'YYYY-MM')
+
+    # Crecimiento de usuarios por mes histórico con acumulado
     user_rows = db.execute(
-        select(func.to_char(User.created_at, 'YYYY-MM').label('month'), func.count(User.id))
+        select(date_expr_month.label('month'), func.count(User.id))
+        .where(User.created_at.isnot(None))
         .group_by('month')
         .order_by('month')
     ).all()
-    user_growth = [{"month": row[0], "users": row[1]} for row in user_rows if row[0]]
+    running_total = 0
+    user_growth = []
+    for row in user_rows:
+        if row[0]:
+            count = int(row[1])
+            running_total += count
+            user_growth.append({
+                "month": row[0],
+                "users": count,
+                "cumulative": running_total,
+            })
+
+    # Crecimiento de usuarios día a día (últimos 30 días continuos para precisión)
+    now = datetime.now(timezone.utc)
+    thirty_days_ago = now - timedelta(days=30)
+    base_users_count = db.scalar(
+        select(func.count(User.id)).where(User.created_at < thirty_days_ago)
+    ) or 0
+
+    daily_rows = db.execute(
+        select(date_expr_day.label('day'), func.count(User.id))
+        .where(User.created_at >= thirty_days_ago)
+        .group_by('day')
+        .order_by('day')
+    ).all()
+
+    daily_map = {row[0]: int(row[1]) for row in daily_rows if row[0]}
+    user_growth_daily = []
+    current_cumulative = base_users_count
+
+    for i in range(30, -1, -1):
+        day_dt = now - timedelta(days=i)
+        day_str = day_dt.strftime('%Y-%m-%d')
+        day_users = daily_map.get(day_str, 0)
+        current_cumulative += day_users
+        user_growth_daily.append({
+            "date": day_str,
+            "day": day_dt.strftime('%d/%m'),
+            "users": day_users,
+            "cumulative": current_cumulative,
+        })
+
+    # Resumen de KPIs de crecimiento para tarjetas del gráfico
+    today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+    seven_days_ago = now - timedelta(days=7)
+    month_start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
+
+    new_today = db.scalar(select(func.count(User.id)).where(User.created_at >= today_start)) or 0
+    new_this_week = db.scalar(select(func.count(User.id)).where(User.created_at >= seven_days_ago)) or 0
+    new_this_month = db.scalar(select(func.count(User.id)).where(User.created_at >= month_start)) or 0
+    total_users = db.scalar(select(func.count(User.id))) or 0
+
+    user_metrics = {
+        "total": total_users,
+        "new_today": new_today,
+        "new_this_week": new_this_week,
+        "new_this_month": new_this_month,
+    }
 
     # Reseñas por mes
     review_rows = db.execute(
-        select(func.to_char(Review.created_at, 'YYYY-MM').label('month'), func.count(Review.id))
+        select(rev_date_expr_month.label('month'), func.count(Review.id))
         .group_by('month')
         .order_by('month')
     ).all()
@@ -131,6 +198,8 @@ def get_charts_data(db: Session) -> dict:
 
     return {
         "user_growth": user_growth,
+        "user_growth_daily": user_growth_daily,
+        "user_metrics": user_metrics,
         "reviews_by_month": reviews_by_month,
         "destinations_by_category": destinations_by_category,
         "destinations_by_region": destinations_by_region,
