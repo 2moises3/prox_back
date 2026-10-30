@@ -120,6 +120,8 @@ def get_map_markers() -> list[dict[str, Any]]:
                     "longitude": c.longitude,
                     "category": c.category,
                     "label": dest_name,
+                    "geofence_radius_meters": c.geofence_radius_meters if c.geofence_radius_meters is not None else 250,
+                    "min_dwell_minutes": c.min_dwell_minutes if c.min_dwell_minutes is not None else 20,
                 })
             return markers
         finally:

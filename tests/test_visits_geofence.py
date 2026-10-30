@@ -327,3 +327,53 @@ def test_api_atlas_endpoint(client):
     data = res.json()
     assert data["success"] is True
     assert data["data"]["total_verified_visits"] >= 1
+
+
+def test_admin_radius_25km_and_one_minute_dwell(db_session):
+    catalog = db_session.query(TourismCatalog).filter_by(
+        destination_id="circuito_magico"
+    ).one()
+    catalog.geofence_radius_meters = 25000
+    catalog.min_dwell_minutes = 1
+    db_session.commit()
+
+    try:
+        result, error, code = check_in_visit(
+            user_id="U_OTHER_TEST",
+            destination_id="circuito_magico",
+            latitude=-12.1215,
+            longitude=-77.0298,
+            db=db_session,
+        )
+        assert error is None
+        assert code == 201
+        assert result["geofence_radius_meters"] == 25000
+        assert result["min_dwell_minutes"] == 1
+
+        early, error, code = verify_visit(
+            user_id="U_OTHER_TEST",
+            visit_id=result["visit_id"],
+            latitude=-12.1215,
+            longitude=-77.0298,
+            db=db_session,
+        )
+        assert early is None
+        assert code == 422
+
+        visit = db_session.query(Visit).filter_by(visit_id=result["visit_id"]).one()
+        visit.started_at = datetime.now(timezone.utc) - timedelta(seconds=61)
+        db_session.commit()
+        completed, error, code = verify_visit(
+            user_id="U_OTHER_TEST",
+            visit_id=result["visit_id"],
+            latitude=-12.1215,
+            longitude=-77.0298,
+            db=db_session,
+        )
+        assert error is None
+        assert code == 200
+        assert completed["visit_status"] == "verified"
+    finally:
+        catalog.geofence_radius_meters = 250
+        catalog.min_dwell_minutes = 20
+        db_session.commit()

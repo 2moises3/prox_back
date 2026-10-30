@@ -174,8 +174,8 @@ def verify_visit(
         elapsed_seconds = (now - started).total_seconds()
         elapsed_minutes = elapsed_seconds / 60.0
 
-        # Margen de 1 minuto de tolerancia por latencia de red
-        if elapsed_minutes < (min_dwell - 1):
+        # Exigir la permanencia configurada también cuando el mínimo es 1 minuto.
+        if elapsed_seconds < min_dwell * 60:
             remaining = int(math.ceil(min_dwell - elapsed_minutes))
             return (
                 None,
