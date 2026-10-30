@@ -206,6 +206,8 @@ def get_destination_by_id(destination_id: str, month: int | None = None, include
                     "official_website": enrichment.get("official_website"),
                     "latitude": enrichment.get("latitude"),
                     "longitude": enrichment.get("longitude"),
+                    "geofence_radius_meters": enrichment.get("geofence_radius_meters"),
+                    "min_dwell_minutes": enrichment.get("min_dwell_minutes"),
                     "gallery_images": [g.url for g in media.gallery] if media.gallery else [],
                 }
 
@@ -348,6 +350,7 @@ def update_destination_admin(db: Session, destination_id: str, update_data: dict
             "activities_summary", "visitor_info_summary", "accessibility_summary",
             "recommended_duration", "how_to_get", "official_website",
             "latitude", "longitude",
+            "geofence_radius_meters", "min_dwell_minutes",
         ]
         for field in _CATALOG_FIELDS:
             if field in update_data and update_data[field] is not None:

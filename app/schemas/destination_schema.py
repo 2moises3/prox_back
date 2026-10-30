@@ -111,6 +111,10 @@ class DestinationAdminUpdate(BaseModel):
     official_website: str | None = None
     cost_level: str | None = None      # bajo | medio | alto. null lo borra.
 
+    # Geolocalización y Atlas de Visitas
+    geofence_radius_meters: int | None = None
+    min_dwell_minutes: int | None = None
+
     @field_validator("cost_level")
     @classmethod
     def _valid_cost_level(cls, v):

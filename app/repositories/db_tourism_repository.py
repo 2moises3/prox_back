@@ -41,6 +41,8 @@ def _build_catalog_item(catalog: TourismCatalog, db: Session) -> dict[str, Any]:
         "cost_level": catalog.cost_level,
         "latitude": catalog.latitude,
         "longitude": catalog.longitude,
+        "geofence_radius_meters": catalog.geofence_radius_meters if catalog.geofence_radius_meters is not None else 250,
+        "min_dwell_minutes": catalog.min_dwell_minutes if catalog.min_dwell_minutes is not None else 20,
         "cover_image_url": media.cover.url if media.cover else None,
         "gallery_images": [g.url for g in media.gallery] if media.gallery else [],
         "data_status": catalog.data_status,
@@ -154,6 +156,8 @@ def get_enrichment_data(destination_id: str, db: Session | None = None) -> dict[
                 "cost_level": catalog.cost_level,
                 "latitude": catalog.latitude,
                 "longitude": catalog.longitude,
+                "geofence_radius_meters": catalog.geofence_radius_meters if catalog.geofence_radius_meters is not None else 250,
+                "min_dwell_minutes": catalog.min_dwell_minutes if catalog.min_dwell_minutes is not None else 20,
                 "data_status": catalog.data_status,
             }
         finally:

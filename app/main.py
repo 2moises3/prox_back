@@ -38,6 +38,7 @@ from app.routes import (
     admin_import_routes,
     admin_engine_routes,
     notification_routes,
+    visit_routes,
 )
 
 # Configurar logging
@@ -166,6 +167,7 @@ def create_app() -> FastAPI:
     app.include_router(admin_engine_routes.router, prefix=api_prefix)
     app.include_router(notification_routes.router, prefix=api_prefix)
     app.include_router(release_public_routes.router, prefix=api_prefix)
+    app.include_router(visit_routes.router, prefix=api_prefix)
 
     return app
 

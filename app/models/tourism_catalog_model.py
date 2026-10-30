@@ -40,4 +40,8 @@ class TourismCatalog(Base, TimestampMixin):
     # Uso interno del dashboard
     data_status: Mapped[str | None] = mapped_column(String)
 
+    # Configuración de Geofencing y permanencia de visita
+    geofence_radius_meters: Mapped[int | None] = mapped_column(Integer, default=250)
+    min_dwell_minutes: Mapped[int | None] = mapped_column(Integer, default=20)
+
     destination = relationship("Destination", back_populates="tourism_catalog")
